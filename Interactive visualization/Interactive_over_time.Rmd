@@ -4,67 +4,6 @@ author: "Christopher Brehm, Klara Kuhn, Cosima Meyer, and Antje Rosebrock"
 output: html_document
 ---
 
-```{r, eval=FALSE, echo=FALSE}
-# Since markdowns seems to have problems with feather, we first need to generate our dataset
-library(feather)
-
-# Read data
-comments1 <- read_feather("Data/fox_1_comments.feather")
-comments1$channel <- "fox"
-comments2 <- read_feather("Data/fox_2_comments.feather")
-comments2$channel <- "fox"
-comments3 <- read_feather("Data/fox_3_comments.feather")
-comments3$channel <- "fox"
-comments4 <- read_feather("Data/msnbc_comments.feather")
-comments4$channel <- "msnbc"
-
-# Bring them all together
-comments <- rbind(comments1, comments2, comments3, comments4)
-
-fox <- rbind(comments1, comments2, comments3)
-msnbc <- comments4
-
-
-### Define three categories
-# 
-# 1. Persons who only comment on FOX
-# 2. Persons who only comment on MNSBC
-# 3. Persons who comment on both
-
-# only fox users
-fox_users <-
-  dplyr::anti_join(fox, msnbc, by = 'authorChannelId.value')
-
-fox_users$group <- 1
-
-# only msnbc users
-msnbc_users <-
-  dplyr::anti_join(msnbc, fox, by = 'authorChannelId.value')
-
-msnbc_users$group <- 2
-
-# both
-both <- rbind(fox_users, msnbc_users)
-
-overlap <-
-  dplyr::anti_join(comments, both, by = 'authorChannelId.value')
-
-overlap$group <- 3
-
-# bring them back together
-data <- rbind(overlap, fox_users, msnbc_users)
-
-videos_fox <- read_feather("Data/fox_videos.feather")
-videos_msnbc <- read_feather("Data/msnbc_videos.feather")
-videos <- rbind(videos_fox, videos_msnbc)
-colnames(videos)[colnames(videos) == 'video_id'] <- 'videoId'
-fulldata <- merge(videos, data, by="videoId")
-
-# save fulldata as a csv
-
-write.csv(fulldata, "fulldata.csv")
-```
-
 <!-- ### Read in the data -->
 ```{r, setup, message=FALSE, warning=FALSE, echo=FALSE}
 # set working directory
@@ -103,28 +42,6 @@ cbp1 <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
 ```
 
 
-<!-- ### Limit corpus to two weeks after posting -->
-```{r, eval=FALSE, echo=FALSE}
-
-# 
-# # get maximum date
-# fulldata <- fulldata %>% 
-#   group_by(videoId) %>% 
-#   mutate(max_date = max(as.Date(fulldata$publishedAt)))
-# # and minimum date
-# fulldata <- fulldata %>% 
-#   group_by(videoId) %>% 
-#   mutate(min_date = min(as.Date(date,"%d.%m.%Y")))
-
-# calculate the difference
-fulldata <- fulldata %>% 
- ## group_by(videoId) %>% 
-  mutate(diff = as.Date(fulldata$publishedAt,"%Y-%m-%d") - as.Date(date,"%d.%m.%Y"))
-
-# subset to two weeks max
-limited <- subset(fulldata, diff<365)
-```
-
 <!-- ### Prepare corpus -->
 ```{r, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
 # create a text corpus
@@ -144,52 +61,6 @@ corpus_comment_dfm <-
 
 corpus_comment_dfm_trim <- dfm_trim(corpus_comment_dfm, min_docfreq = 2)
 ```
-
-
-<!-- ### Which types of topic are people interested in (based on topics) -->
-<!-- The "LexiCoder Policy Agenda" dictionary captures major topics from the [comparative Policy Agenda project](https://www.comparativeagendas.net) and is currently available in Dutch and English. -->
-```{r, eval=FALSE, echo=FALSE}
-# 
-# dict <- dictionary(file = "~/Downloads/DMU/qta/policy_agendas_english.lcd")
-# 
-# dfm.comment <- dfm(corpus_comment_dfm_trim, groups = "channel", dictionary = dict)
-# 
-# topics.comment <- convert(dfm.comment, "data.frame") %>%
-#   rename(country = document) %>%
-#   select(country, immigration, intl_affairs, defence) %>%
-#   tidyr::gather(immigration:defence, key = "Topic", value = "Share") %>%
-#   group_by(country) %>%
-#   mutate(Share = Share / sum(Share)) %>%
-#   mutate(Topic = haven::as_factor(Topic))
-
-data %>% 
-#  group_by(group) %>% 
-  ggplot(aes(topic, group, colour = topic, fill = topic)) +
-  facet_wrap(~group) +
-  geom_bar(stat="identity") + 
-    scale_fill_manual(values=wes_palette("Chevalier1")
-) +
-  # scale_fill_brewer(palette = "Pastel1") + 
-  ggtitle("Distribution of topics across the three groups") + 
-  xlab("") + 
-  ylab("Topic share") + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size=rel(0.2)))
-
-data %>% 
-  group_by(group) %>% 
-  ggplot(aes(group, topic, colour = topic, fill = topic)) +
- # facet_wrap(~group) +
-  geom_bar(stat="identity") + 
-    scale_fill_manual(values=wes_palette("Chevalier1")
-) +
-  # scale_fill_brewer(palette = "Pastel1") + 
-  ggtitle("Distribution of topics across the three groups") + 
-  xlab("") + 
-  ylab("Topic share") + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size=rel(0.2)))
-```
-
-
 <!-- ### Sentiment analysis -->
 
 
@@ -211,7 +82,7 @@ tidy_comments <- comments %>%
 
 # stemming
 tidy_comments<-tidy_comments %>%
-      dplyr::mutate_at("word", list(wordStem((.), language="en")))
+      dplyr::mutate_at("word", dplyr::funs(wordStem((.), language="en")))
 
 # remove white space
 tidy_comments$word <- gsub("\\s+","",tidy_comments$word)
@@ -235,20 +106,7 @@ cleaned_comments <- tidy_comments %>%
 
 <!-- ### Plot over time -->
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align="center", fig.cap="Comparison of sentiment in comments between user groups (Fox, MSNBC, overlap) over time"}
-
-sentiment_by_time <- cleaned_comments %>%
-  group_by(publishedAt, group) %>% 
-  inner_join(get_sentiment("bing")) %>%
-  count(word, sentiment, sort = TRUE) 
-
-# sentiment_by_time %>% 
-#   filter(sentiment %in% c("positive", "negative")) %>% 
-#   count(publishedAt, sentiment, word)
-
-# ggplot(sentiment_by_time, aes(publishedAt, sentiment)) + 
-#   geom_line()
-
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align="center"}
 
 sentiment_by_time <- cleaned_comments %>%
     # Define a new column using floor_date()
@@ -260,7 +118,7 @@ sentiment_by_time <- cleaned_comments %>%
     # Implement sentiment analysis using the NRC lexicon
     inner_join(get_sentiments("bing"))
 
-labs <- c("1" = "FOX users", "2" ="MSNBC users", "3" = "Both")
+labs <- c("1" = "Fox users", "2" ="MSNBC users", "3" = "Both")
 
 plot1 <- sentiment_by_time %>%
     # Filter for positive and negative words
@@ -283,7 +141,7 @@ plot1 <- sentiment_by_time %>%
       scale_fill_manual(values=wes_palette("Chevalier1")
 ) +
     facet_wrap( ~ group, labeller=as_labeller(labs)) + #, ncol=1)
-    labs(title = "Comparison between user groups", x = "Time", y = "Percentage", color= "Sentiment") +
+    labs(title = "Comparison of sentiment in comments between user groups (Fox, MSNBC, overlap) over time", x = "Time", y = "Percentage", color= "Sentiment") +
     scale_y_continuous(labels = function(percentage) paste0(percentage*100, "%")) + # Multiply by 100 & add %  
 theme_minimal()
 

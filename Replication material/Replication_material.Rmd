@@ -1,6 +1,6 @@
 ---
 title: "Replication material"
-author: "Christopher  Brehm, Klara Kuhn, Cosima Meyer, and Antje Rosebrock"
+author: "Christopher Brehm, Klara Kuhn, Cosima Meyer, and Antje Rosebrock"
 output: html_document
 ---
 
