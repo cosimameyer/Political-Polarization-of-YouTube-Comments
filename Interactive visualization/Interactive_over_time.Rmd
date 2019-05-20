@@ -1,5 +1,5 @@
 ---
-title: "Interactive visualization"
+title: "Comparison of sentiment in comments between user groups \n (Fox, MSNBC, overlap) over time"
 author: "Christopher Brehm, Klara Kuhn, Cosima Meyer, and Antje Rosebrock"
 output: html_document
 ---
@@ -141,7 +141,7 @@ plot1 <- sentiment_by_time %>%
       scale_fill_manual(values=wes_palette("Chevalier1")
 ) +
     facet_wrap( ~ group, labeller=as_labeller(labs)) + #, ncol=1)
-    labs(title = "Comparison of sentiment in comments between user groups (Fox, MSNBC, overlap) over time", x = "Time", y = "Percentage", color= "Sentiment") +
+    labs(title = "", x = "Time", y = "Percentage", color= "Sentiment") +
     scale_y_continuous(labels = function(percentage) paste0(percentage*100, "%")) + # Multiply by 100 & add %  
 theme_minimal()
 
