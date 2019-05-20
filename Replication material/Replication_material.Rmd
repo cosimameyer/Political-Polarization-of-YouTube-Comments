@@ -1,36 +1,12 @@
 ---
-  output: 
-  pdf_document:
-  citation_package: natbib
-  keep_tex: true
-  fig_caption: true
-  fig_width: 6
-  fig_height: 4 
-  latex_engine: pdflatex
-  template: ~/Dropbox/Big Data/Final paper/svm-latex-ms.tex
-  title: "Replication Material for Political Polarization of YouTube Comments on Migration-Related Issues"
-  thanks: "Final paper submitted as part of the course 'Big Data and Immigration Research' in Spring 2019."
-    author:
-    - name:   Christopher Brehm 
-      email:  xxx@gmail.com
-    - name:   Klara Kuhn 
-      email:  klkuhn@mail.uni-mannheim.de
-    - name:   Cosima Meyer 
-      email:  cosima.meyer@uni-mannheim.de
-    - name:   Antje Rosebrock 
-      email:  antje.rosebrock@mzes.uni-mannheim.de
-  date: "`r format(Sys.time(), '%B %d, %Y')`"
-  geometry: margin=1in
-  fontfamily: mathpazo
-  fontsize: 11pt
-  # spacing: double
-  bibliography: ~/bibliography.bib
-  biblio-style: apsr
+title: "Replication material"
+author: "Chris Brehm, Klara Kuhn, Cosima Meyer, and Antje Rosebrock"
+output: html_document
 ---
+
   <!-- https://pandoc.org/MANUAL.html#extension-yaml_metadata_block -->
 
 ### Replication code
-
 
 #### Data generating process
 <!-- Antje's part -->
@@ -40,7 +16,7 @@
 
 #### Data preprocessing
 <!-- Cosima's part -->
-  ```{r, eval=FALSE}
+```{r, eval=FALSE}
 # Prepare the corpus
 comments <- fulldata %>%
   dplyr::group_by(group) %>%
@@ -453,8 +429,8 @@ size = 2
 )
 ```
 
-#### Significane testing
+#### Significance testing
 <!-- Chris' part -->
-  ```{r, eval=FALSE}
+```{r, eval=FALSE}
 
 ```
