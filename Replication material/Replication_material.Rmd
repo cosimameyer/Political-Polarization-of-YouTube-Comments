@@ -10,14 +10,33 @@ output: html_document
 
 #### Necessary packages
 ```{r, eval=FALSE}
-tibble
-readxl
-tuber
 
+# install necessary packages
+# install.packages("install.load")
+library(install.load)
+packages <-
+  c(
+    "quanteda",
+    "tidyverse",
+    "tidytext",
+    "reshape2",
+    "ggplot2",
+    "dplyr",
+    "stringr",
+    "wordcloud",
+    "SnowballC",
+    "lubridate",
+    "plotly",
+    "wesanderson",
+    "feather",
+    "tibble",
+    "readxl",
+    "tuber"
+    )
+install_load(packages)
 ```
 
 #### Data gathering process
-<!-- Antje's part -->
 ```{r, eval=FALSE}
 
 
@@ -354,7 +373,7 @@ c_deal_msnbc = lapply(as.character(deal_msnbc$video_id), function(x){
 
 c_deal_msnbc <- rbindlist(c_deal_msnbc)
 
-c_nat_emergency_msnbc = lapply(as.character(nat_emergency_msnbc$video_id), function(x){
+c_nat_emergency_msnbc = lapply(as.character(nat_emergency_msnbc$video_id), function(x) {
   get_all_comments(c(video_id = x), max_results = 5000)
 })
 
@@ -456,8 +475,61 @@ write_feather(fox_2, path ="~/BigDataInImmigrationResearch/fox_2_comments.feathe
 write_feather(fox_3, path ="~/BigDataInImmigrationResearch/fox_3_comments.feather")
 ```
 
+#### Prepare the data for further analysis
+```{r, eval=FALSE}
+# Read data
+comments1 <- read_feather("Data/fox_1_comments.feather")
+comments1$channel <- "fox"
+comments2 <- read_feather("Data/fox_2_comments.feather")
+comments2$channel <- "fox"
+comments3 <- read_feather("Data/fox_3_comments.feather")
+comments3$channel <- "fox"
+comments4 <- read_feather("Data/msnbc_comments.feather")
+comments4$channel <- "msnbc"
+
+# Bring them all together
+comments <- rbind(comments1, comments2, comments3, comments4)
+
+fox <- rbind(comments1, comments2, comments3)
+msnbc <- comments4
+
+### Define three categories
+# 
+# 1. Persons who only comment on FOX
+# 2. Persons who only comment on MNSBC
+# 3. Persons who comment on both
+
+# only fox users
+fox_users <-
+  dplyr::anti_join(fox, msnbc, by = 'authorChannelId.value')
+
+fox_users$group <- 1
+
+# only msnbc users
+msnbc_users <-
+  dplyr::anti_join(msnbc, fox, by = 'authorChannelId.value')
+
+msnbc_users$group <- 2
+
+# both
+both <- rbind(fox_users, msnbc_users)
+
+overlap <-
+  dplyr::anti_join(comments, both, by = 'authorChannelId.value')
+
+overlap$group <- 3
+
+# bring them back together
+data <- rbind(overlap, fox_users, msnbc_users)
+
+videos_fox <- read_feather("Data/fox_videos.feather")
+videos_msnbc <- read_feather("Data/msnbc_videos.feather")
+videos <- rbind(videos_fox, videos_msnbc)
+colnames(videos)[colnames(videos) == 'video_id'] <- 'videoId'
+fulldata <- merge(videos, data, by="videoId")
+```
+
 #### Data preprocessing
-<!-- Cosima's part -->
 ```{r, eval=FALSE}
 # Prepare the corpus
 comments <- fulldata %>%
@@ -494,7 +566,6 @@ cleaned_comments <- tidy_comments %>%
 ```
 
 #### Visualization
-<!-- Cosima's part -->
 ##### Descriptives Plot
 ```{r, eval=FALSE}
 ## Plot distribution in barplot
