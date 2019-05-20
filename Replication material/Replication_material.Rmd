@@ -32,13 +32,12 @@ packages <-
     "tibble",
     "readxl",
     "tuber"
-    )
+  )
 install_load(packages)
 ```
 
 #### Data gathering process
 ```{r, eval=FALSE}
-
 
 #Authentification with Google Developers Account
 yt_oauth("INPUT CLIENT ID", "INPUT CLIENT SECRET", token = "")
@@ -176,29 +175,57 @@ videostats_fox <- videostats_fox[order(videostats_fox$commentCount),]
 
 videostats_fox$commentCount <- as.numeric(videostats_fox$commentCount)
 
-fox_video_stats <- merge(selected_vids_fox, videostats_fox, by = "video_id", all = T)
-msnbc_video_stats <- merge(selected_vids_msnbc, videostats_msnbc, by = "video_id", all = T)
+fox_video_stats <-
+  merge(selected_vids_fox,
+        videostats_fox,
+        by = "video_id",
+        all = T)
 
+msnbc_video_stats <-
+  merge(selected_vids_msnbc,
+        videostats_msnbc,
+        by = "video_id",
+        all = T)
+  
 fox_video_stats <- fox_video_stats %>%
-  select(video_id, title.x, description, date.x, topic, viewCount, likeCount, dislikeCount, commentCount, url)
+  select(
+  video_id,
+  title.x,
+  description,
+  date.x,
+  topic,
+  viewCount,
+  likeCount,
+  dislikeCount,
+  commentCount,
+  url
+  )
 
 msnbc_video_stats <- msnbc_video_stats %>%
-  select(video_id, title.x, description, date.x, topic, viewCount, likeCount, dislikeCount, commentCount, url)
-
+  select(
+  video_id,
+  title.x,
+  description,
+  date.x,
+  topic,
+  viewCount,
+  likeCount,
+  dislikeCount,
+  commentCount,
+  url
+  )
 
 #Select videos that have ober 100 comments
 
 campaign_msnbc <- msnbc_video_stats %>%
-filter(commentCount >= 100) %>%
+  filter(commentCount >= 100) %>%
   filter(topic == "campaign") %>%
   distinct()
 
 nrow(campaign_msnbc) #2
 
-
-  
 nomination_msnbc <- msnbc_video_stats %>%
-filter(commentCount >= 100) %>%
+  filter(commentCount >= 100) %>%
   filter(topic == "nomination") %>%
   distinct()
 
@@ -206,16 +233,14 @@ nrow(nomination_msnbc) #1
 
 
 preselect_msnbc <- msnbc_video_stats %>%
-filter(commentCount >= 100) %>%
+  filter(commentCount >= 100) %>%
   filter(topic == "president-elect") %>%
   distinct()
 
 nrow(preselect_msnbc) #2
 
-
-
 earlydiscussion_msnbc <- msnbc_video_stats %>%
-filter(commentCount >= 100) %>%
+  filter(commentCount >= 100) %>%
   filter(topic == "executive order/early budget discussions/") %>%
   distinct()
 
@@ -321,158 +346,186 @@ close_border_fox <- fox_video_stats %>%
 
 nrow(close_border_fox) #26
 
-#Extract the comments for these videos
+# Extract the comments for these videos
 
-c_campaign_msnbc = lapply(as.character(campaign_msnbc$video_id), function(x){
+c_campaign_msnbc <-
+  lapply(as.character(campaign_msnbc$video_id), function(x) {
   get_all_comments(c(video_id = x), max_results = 5000)
-})
+  })
 
 c_campaign_msnbc <- rbindlist(c_campaign_msnbc)
 
-c_nomination_msnbc = lapply(as.character(nomination_msnbc$video_id), function(x){
+c_nomination_msnbc <-
+  lapply(as.character(nomination_msnbc$video_id), function(x) {
   get_all_comments(c(video_id = x), max_results = 5000)
-})
+  })
 
 c_nomination_msnbc <- rbindlist(c_nomination_msnbc)
 
-c_preselect_msnbc = lapply(as.character(preselect_msnbc$video_id), function(x){
+c_preselect_msnbc <-
+  lapply(as.character(preselect_msnbc$video_id), function(x) {
   get_all_comments(c(video_id = x), max_results = 5000)
-})
+  })
 
 c_preselect_msnbc <- rbindlist(c_preselect_msnbc)
 
-c_earlydiscussion_msnbc = lapply(as.character(earlydiscussion_msnbc$video_id), function(x){
+c_earlydiscussion_msnbc <-
+  lapply(as.character(earlydiscussion_msnbc$video_id), function(x) {
   get_all_comments(c(video_id = x), max_results = 5000)
-})
-
+  })
+  
 c_earlydiscussion_msnbc <- rbindlist(c_earlydiscussion_msnbc)
 
-
-
-c_border_crisis_msnbc = lapply(as.character(border_crisis_msnbc$video_id), function(x){
+c_border_crisis_msnbc <-
+  lapply(as.character(border_crisis_msnbc$video_id), function(x) {
   get_all_comments(c(video_id = x), max_results = 5000)
-})
-
+  })
+  
 c_border_crisis_msnbc <- rbindlist(c_border_crisis_msnbc[1:57])
 
-
-
-c_shutdown_msnbc = lapply(as.character(shutdown_msnbc$video_id), function(x){
+c_shutdown_msnbc <-
+  lapply(as.character(shutdown_msnbc$video_id), function(x) {
   get_all_comments(c(video_id = x), max_results = 5000)
-})
-
+  })
+  
 c_shutdown_msnbc <- rbindlist(c_shutdown_msnbc)
 
-
-
-c_deal_msnbc = lapply(as.character(deal_msnbc$video_id), function(x){
+c_deal_msnbc <-
+  lapply(as.character(deal_msnbc$video_id), function(x) {
   get_all_comments(c(video_id = x), max_results = 5000)
-})
-
-
+  })
 
 c_deal_msnbc <- rbindlist(c_deal_msnbc)
 
-c_nat_emergency_msnbc = lapply(as.character(nat_emergency_msnbc$video_id), function(x) {
+c_nat_emergency_msnbc <-
+  lapply(as.character(nat_emergency_msnbc$video_id), function(x) {
   get_all_comments(c(video_id = x), max_results = 5000)
-})
+  })
 
 c_nat_emergency_msnbc <- rbindlist(c_nat_emergency_msnbc)
 
-c_close_border_msnbc = lapply(as.character(close_border_msnbc$video_id), function(x){
+c_close_border_msnbc <-
+  lapply(as.character(close_border_msnbc$video_id), function(x) {
   get_all_comments(c(video_id = x), max_results = 5000)
-})
+  })
 
 c_close_border_msnbc <- rbindlist(c_close_border_msnbc)
 
-c_campaign_fox = lapply(as.character(campaign_fox$video_id), function(x){
+c_campaign_fox <-
+  lapply(as.character(campaign_fox$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_nomination_fox <-
+  lapply(as.character(nomination_fox$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_preselect_fox <-
+  lapply(as.character(preselect_fox$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_earlydiscussion_fox <-
+  lapply(as.character(earlydiscussion_fox$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_border_crisis_fox <-
+  lapply(as.character(border_crisis_fox$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_shutdown_fox <-
+  lapply(as.character(shutdown_fox$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_deal_fox <- lapply(as.character(deal_fox$video_id), function(x) {
   get_all_comments(c(video_id = x), max_results = 5000)
 })
 
-c_nomination_fox = lapply(as.character(nomination_fox$video_id), function(x){
+c_nat_emergency_fox <-
+  lapply(as.character(nat_emergency_fox$video_id), function(x) {
   get_all_comments(c(video_id = x), max_results = 5000)
-})
+  })
 
-c_preselect_fox = lapply(as.character(preselect_fox$video_id), function(x){
+c_close_border_fox <-
+  lapply(as.character(close_border_fox$video_id), function(x) {
   get_all_comments(c(video_id = x), max_results = 5000)
-})
-
-c_earlydiscussion_fox = lapply(as.character(earlydiscussion_fox$video_id), function(x){
-  get_all_comments(c(video_id = x), max_results = 5000)
-})
-
-c_border_crisis_fox = lapply(as.character(border_crisis_fox$video_id), function(x){
-  get_all_comments(c(video_id = x), max_results = 5000)
-})
-
-c_shutdown_fox = lapply(as.character(shutdown_fox$video_id), function(x){
-  get_all_comments(c(video_id = x), max_results = 5000)
-})
-
-c_deal_fox = lapply(as.character(deal_fox$video_id), function(x){
-  get_all_comments(c(video_id = x), max_results = 5000)
-})
-
-c_nat_emergency_fox = lapply(as.character(nat_emergency_fox$video_id), function(x){
-  get_all_comments(c(video_id = x), max_results = 5000)
-})
-
-c_close_border_fox = lapply(as.character(close_border_fox$video_id), function(x){
-  get_all_comments(c(video_id = x), max_results = 5000)
-})
+  })
 
 
 
 #-------------------------------
-
-
-c_campaign_fox = rbindlist(c_campaign_fox)
-c_nomination_fox = rbindlist(c_nomination_fox)
-c_preselect_fox = rbindlist(c_preselect_fox)
-c_earlydiscussion_fox = rbindlist(c_earlydiscussion_fox)
-c_border_crisis_fox = rbindlist(c_border_crisis_fox)
-c_shutdown_fox = rbindlist(c_shutdown_fox)
-c_deal_fox = rbindlist(c_deal_fox)
-c_nat_emergency_fox = rbindlist(c_nat_emergency_fox)
-c_close_border_fox = rbindlist(c_close_border_fox)
+for(var in c(
+  c_campaign_fox,
+  c_nomination_fox,
+  c_preselect_fox,
+  c_earlydiscussion_fox,
+  c_border_crisis_fox,
+  c_shutdown_fox,
+  c_deal_fox,
+  c_nat_emergency_fox,
+  c_close_border_fox
+  )) {
+  var <- rbindlist(var)
+  }
 
 #assign time period/topic for each comment
-
-c_campaign_fox$topic = "campaign before Republican nomination"
-c_nomination_fox$topic = "Republican nomination"
-c_preselect_fox$topic = "president-elect"
-c_earlydiscussion_fox$topic = "early discussion about funding"
-c_border_crisis_fox$topic = "border crisis"
-c_shutdown_fox$topic = "shutdown"
-c_deal_fox$topic = "deal"
-c_nat_emergency_fox$topic = "national emergency"
-c_close_border_fox$topic = "close border"
-
-
-c_campaign_msnbc$topic = "campaign before Republican nomination"
-c_nomination_msnbc$topic = "Republican nomination"
-c_preselect_msnbc$topic = "president-elect"
-c_earlydiscussion_msnbc$topic = "early discussion about funding"
-c_border_crisis_msnbc$topic = "border crisis"
-c_shutdown_msnbc$topic = "shutdown"
-c_deal_msnbc$topic = "deal"
-c_nat_emergency_msnbc$topic = "national emergency"
-c_close_border_msnbc$topic = "close border"
-
-fox_1 <- bind_rows(c_campaign_fox,c_nomination_fox,c_preselect_fox,c_earlydiscussion_fox,c_border_crisis_fox)
-fox_2 <- bind_rows(c_shutdown_fox,c_deal_fox)
-fox_3 <- bind_rows(c_nat_emergency_fox,c_close_border_fox)
-
-msnbc <- bind_rows(c_campaign_msnbc,c_nomination_msnbc,c_preselect_msnbc,c_earlydiscussion_msnbc,c_border_crisis_msnbc,c_shutdown_msnbc,c_deal_msnbc,c_nat_emergency_msnbc,c_close_border_msnbc)
+c_campaign_fox$topic <- "campaign before Republican nomination"
+c_nomination_fox$topic <- "Republican nomination"
+c_preselect_fox$topic <- "president-elect"
+c_earlydiscussion_fox$topic <- "early discussion about funding"
+c_border_crisis_fox$topic <- "border crisis"
+c_shutdown_fox$topic <- "shutdown"
+c_deal_fox$topic <- "deal"
+c_nat_emergency_fox$topic <- "national emergency"
+c_close_border_fox$topic <- "close border"
 
 
-write_feather(videostats_fox, path ="~/BigDataInImmigrationResearch/fox_videos.feather")
-write_feather(videostats_msnbc, path ="~/BigDataInImmigrationResearch/msnbc_videos.feather")
+c_campaign_msnbc$topic <- "campaign before Republican nomination"
+c_nomination_msnbc$topic <- "Republican nomination"
+c_preselect_msnbc$topic <- "president-elect"
+c_earlydiscussion_msnbc$topic <- "early discussion about funding"
+c_border_crisis_msnbc$topic <- "border crisis"
+c_shutdown_msnbc$topic <- "shutdown"
+c_deal_msnbc$topic <- "deal"
+c_nat_emergency_msnbc$topic <- "national emergency"
+c_close_border_msnbc$topic <- "close border"
 
-write_feather(msnbc, path ="~/BigDataInImmigrationResearch/msnbc_comments.feather")
-write_feather(fox_1, path ="~/BigDataInImmigrationResearch/fox_1_comments.feather")
-write_feather(fox_2, path ="~/BigDataInImmigrationResearch/fox_2_comments.feather")
-write_feather(fox_3, path ="~/BigDataInImmigrationResearch/fox_3_comments.feather")
+fox_1 <-
+  bind_rows(
+  c_campaign_fox,
+  c_nomination_fox,
+  c_preselect_fox,
+  c_earlydiscussion_fox,
+  c_border_crisis_fox
+  )
+fox_2 <- bind_rows(c_shutdown_fox, c_deal_fox)
+fox_3 <- bind_rows(c_nat_emergency_fox, c_close_border_fox)
+
+msnbc <-
+  bind_rows(
+  c_campaign_msnbc,
+  c_nomination_msnbc,
+  c_preselect_msnbc,
+  c_earlydiscussion_msnbc,
+  c_border_crisis_msnbc,
+  c_shutdown_msnbc,
+  c_deal_msnbc,
+  c_nat_emergency_msnbc,
+  c_close_border_msnbc
+  )
+
+
+write_feather(videostats_fox, path = "~/BigDataInImmigrationResearch/fox_videos.feather")
+write_feather(videostats_msnbc, path = "~/BigDataInImmigrationResearch/msnbc_videos.feather")
+
+write_feather(msnbc, path = "~/BigDataInImmigrationResearch/msnbc_comments.feather")
+write_feather(fox_1, path = "~/BigDataInImmigrationResearch/fox_1_comments.feather")
+write_feather(fox_2, path = "~/BigDataInImmigrationResearch/fox_2_comments.feather")
+write_feather(fox_3, path = "~/BigDataInImmigrationResearch/fox_3_comments.feather")
 ```
 
 #### Prepare the data for further analysis
@@ -526,7 +579,7 @@ videos_fox <- read_feather("Data/fox_videos.feather")
 videos_msnbc <- read_feather("Data/msnbc_videos.feather")
 videos <- rbind(videos_fox, videos_msnbc)
 colnames(videos)[colnames(videos) == 'video_id'] <- 'videoId'
-fulldata <- merge(videos, data, by="videoId")
+fulldata <- merge(videos, data, by = "videoId")
 ```
 
 #### Data preprocessing
