@@ -198,13 +198,577 @@ $(document).ready(function () {
 <p><!-- https://pandoc.org/MANUAL.html#extension-yaml_metadata_block --></p>
 <div id="replication-code" class="section level3">
 <h3>Replication code</h3>
-<div id="data-generating-process" class="section level4">
-<h4>Data generating process</h4>
-<!-- Antje's part -->
+<div id="necessary-packages" class="section level4">
+<h4>Necessary packages</h4>
+<pre class="r"><code># install necessary packages
+# install.packages(&quot;install.load&quot;)
+library(install.load)
+packages &lt;-
+  c(
+    &quot;quanteda&quot;,
+    &quot;tidyverse&quot;,
+    &quot;tidytext&quot;,
+    &quot;reshape2&quot;,
+    &quot;ggplot2&quot;,
+    &quot;dplyr&quot;,
+    &quot;stringr&quot;,
+    &quot;wordcloud&quot;,
+    &quot;SnowballC&quot;,
+    &quot;lubridate&quot;,
+    &quot;plotly&quot;,
+    &quot;wesanderson&quot;,
+    &quot;feather&quot;,
+    &quot;tibble&quot;,
+    &quot;readxl&quot;,
+    &quot;tuber&quot;
+  )
+install_load(packages)</code></pre>
+</div>
+<div id="data-gathering-process" class="section level4">
+<h4>Data gathering process</h4>
+<pre class="r"><code>#Authentification with Google Developers Account
+yt_oauth(&quot;INPUT CLIENT ID&quot;, &quot;INPUT CLIENT SECRET&quot;, token = &quot;&quot;)
+
+#Channel Ids
+idmsnbc &lt;- &quot;UCaXkIU1QidjPwiAYu6GcHjg&quot;
+idfox &lt;- &quot;UCXIJgqnII2ZOINSWNOGFThA&quot;
+
+
+#Search for all MSNBC and Fox News videos that contain the term &quot;border&quot; or &quot;wall&quot; 
+#limited to those videos published after Trump declared his candidacy
+m_border &lt;-
+  yt_search(term = &quot;border&quot;,
+  type = &quot;video&quot;,
+  channel_id = idmsnbc)
+  m_border_1 &lt;- m_border %&gt;%
+  mutate(date = as.Date(publishedAt)) %&gt;%
+  filter(date &gt;= &quot;2015-06-16&quot;) %&gt;%
+  arrange(date)
+
+  f_border &lt;-
+    yt_search(term = &quot;border&quot;,
+    type = &quot;video&quot;,
+    channel_id = idfox)
+    f_border_1 &lt;- f_border %&gt;%
+    mutate(date = as.Date(publishedAt)) %&gt;%
+    filter(date &gt;= &quot;2015-06-16&quot;) %&gt;%
+    arrange(date)
+
+    m_wall &lt;- yt_search(term = &quot;wall&quot;,
+                        type = &quot;video&quot;,
+                        channel_id = idmsnbc)
+    m_wall_1 &lt;- m_wall %&gt;%
+      mutate(date = as.Date(publishedAt)) %&gt;%
+      filter(date &gt;= &quot;2015-06-16&quot;) %&gt;%
+      arrange(date)
+                        
+    f_wall &lt;- yt_search(term = &quot;wall&quot;,
+                        type = &quot;video&quot;,
+                        channel_id = idfox)
+                        f_wall_1 &lt;- f_wall %&gt;%
+                        mutate(date = as.Date(publishedAt)) %&gt;%
+                        filter(date &gt;= &quot;2015-06-16&quot;) %&gt;%
+                        arrange(date)
+                        
+# Combine the results of the searches per channel and filter for videos that contain the term &quot;Trump&quot;
+
+fox_vids &lt;- bind_rows(f_border_1, f_wall_1)
+msnbc_vids &lt;- bind_rows(m_border_1, m_wall_1)
+
+fox_videos &lt;- fox_vids %&gt;%
+  filter_all(any_vars(str_detect(tolower(.), pattern = &quot;trump&quot;))) %&gt;%
+  distinct()
+
+msnbc_videos &lt;- msnbc_vids %&gt;%
+  filter_all(any_vars(str_detect(tolower(.), pattern = &quot;trump&quot;))) %&gt;%
+  distinct()
+                        
+#Some basic data cleaning due to Encoding
+
+msnbc_videos$title &lt;- gsub(&quot;&amp;#39;&quot;, &quot;&quot;, msnbc_videos$title)
+msnbc_videos$title &lt;- gsub(&quot;&amp;quot;&quot;, &quot;&quot;, msnbc_videos$title)
+
+fox_videos$title &lt;- gsub(&quot;&amp;#39;&quot;, &quot;&quot;, fox_videos$title)
+fox_videos$title &lt;- gsub(&quot;&amp;quot;&quot;, &quot;&quot;, fox_videos$title)
+
+# Data were saved as a CSV file and videos were manually selected and labeled according to the time it was published
+
+write.csv2(fox_videos, &quot;~/BigDataInImmigrationResearch/vids_fox.csv&quot;)
+write.csv2(msnbc_videos,
+&quot;~/BigDataInImmigrationResearch/vids_msnbc.csv&quot;)
+
+#load selected videos
+
+selected_vids_msnbc &lt;-
+  read_excel(&quot;~/Data/selected_vids_msnbc_neu.xlsx&quot;)
+  selected_vids_fox &lt;-
+  read_excel(&quot;~/Data/selected_vids_fox_neu.xlsx&quot;)
+  
+#Get statistics for each of the videos
+  videostats_msnbc &lt;- lapply(as.character(msnbc_videos$video_id), function(x) {
+    get_stats(video_id = x)
+  })
+  
+videostats_msnbc &lt;- do.call(rbind.data.frame, videostats_msnbc)
+videostats_msnbc$title &lt;- msnbc_videos$title
+videostats_msnbc$date &lt;- msnbc_videos$date
+
+videostats_msnbc = select(videostats_msnbc,
+  date,
+  title,
+  viewCount,
+  likeCount,
+  dislikeCount,
+  commentCount) %&gt;%
+  as.tibble() %&gt;%
+  mutate(
+  viewCount = as.numeric(as.character(viewCount)),
+  likeCount = as.numeric(as.character(likeCount)),
+  dislikeCount = as.numeric(as.character(dislikeCount)),
+  commentCount = as.numeric(as.character(commentCount))
+  )
+
+videostats_msnbc &lt;-
+  merge(videostats_msnbc, msnbc_videos[, c(&quot;title&quot;, &quot;video_id&quot;)], by = &quot;title&quot;)
+videostats_msnbc$url &lt;-
+  paste(&quot;https://www.youtube.com/watch?v=&quot;,
+  videostats_msnbc$video_id,
+  sep = &quot;&quot;)
+videostats_msnbc &lt;-
+  videostats_msnbc[order(videostats_msnbc$commentCount), ]
+  
+videostats_msnbc$commentCount &lt;-
+  as.numeric(videostats_msnbc$commentCount)
+  
+
+videostats_fox &lt;- lapply(as.character(fox_videos$video_id), function(x){
+  get_stats(video_id = x)
+})
+
+
+videostats_fox &lt;- do.call(rbind.data.frame, videostats_fox)
+videostats_fox$title &lt;- fox_videos$title
+videostats_fox$date &lt;- fox_videos$date
+videostats_fox &lt;- select(videostats_fox, date, title, viewCount, likeCount, dislikeCount, commentCount) %&gt;%
+  as.tibble() %&gt;%
+  mutate(viewCount = as.numeric(as.character(viewCount)),
+         likeCount = as.numeric(as.character(likeCount)),
+         dislikeCount = as.numeric(as.character(dislikeCount)),
+         commentCount = as.numeric(as.character(commentCount)))
+
+videostats_fox &lt;- merge(videostats_fox, fox_videos[ , c(&quot;title&quot;, &quot;video_id&quot;)], by=&quot;title&quot;)
+videostats_fox$url &lt;- paste(&quot;https://www.youtube.com/watch?v=&quot;, videostats_fox$video_id, sep=&quot;&quot;)
+videostats_fox &lt;- videostats_fox[order(videostats_fox$commentCount),]
+
+videostats_fox$commentCount &lt;- as.numeric(videostats_fox$commentCount)
+
+fox_video_stats &lt;-
+  merge(selected_vids_fox,
+        videostats_fox,
+        by = &quot;video_id&quot;,
+        all = T)
+
+msnbc_video_stats &lt;-
+  merge(selected_vids_msnbc,
+        videostats_msnbc,
+        by = &quot;video_id&quot;,
+        all = T)
+  
+fox_video_stats &lt;- fox_video_stats %&gt;%
+  select(
+  video_id,
+  title.x,
+  description,
+  date.x,
+  topic,
+  viewCount,
+  likeCount,
+  dislikeCount,
+  commentCount,
+  url
+  )
+
+msnbc_video_stats &lt;- msnbc_video_stats %&gt;%
+  select(
+  video_id,
+  title.x,
+  description,
+  date.x,
+  topic,
+  viewCount,
+  likeCount,
+  dislikeCount,
+  commentCount,
+  url
+  )
+
+#Select videos that have ober 100 comments
+
+campaign_msnbc &lt;- msnbc_video_stats %&gt;%
+  filter(commentCount &gt;= 100) %&gt;%
+  filter(topic == &quot;campaign&quot;) %&gt;%
+  distinct()
+
+nrow(campaign_msnbc) #2
+
+nomination_msnbc &lt;- msnbc_video_stats %&gt;%
+  filter(commentCount &gt;= 100) %&gt;%
+  filter(topic == &quot;nomination&quot;) %&gt;%
+  distinct()
+
+nrow(nomination_msnbc) #1
+
+
+preselect_msnbc &lt;- msnbc_video_stats %&gt;%
+  filter(commentCount &gt;= 100) %&gt;%
+  filter(topic == &quot;president-elect&quot;) %&gt;%
+  distinct()
+
+nrow(preselect_msnbc) #2
+
+earlydiscussion_msnbc &lt;- msnbc_video_stats %&gt;%
+  filter(commentCount &gt;= 100) %&gt;%
+  filter(topic == &quot;executive order/early budget discussions/&quot;) %&gt;%
+  distinct()
+
+nrow(earlydiscussion_msnbc) #25
+
+border_crisis_msnbc &lt;- msnbc_video_stats %&gt;%
+  filter(commentCount &gt;= 100) %&gt;%
+  filter(topic == &quot;border crisis&quot;) %&gt;%
+  distinct()
+
+nrow(border_crisis_msnbc) #57
+
+shutdown_msnbc &lt;- msnbc_video_stats %&gt;%
+  filter(commentCount &gt;= 100) %&gt;%
+  filter(topic == &quot;shutdown&quot;)  %&gt;%
+  distinct()
+
+nrow(shutdown_msnbc) #53
+
+deal_msnbc &lt;- msnbc_video_stats %&gt;%
+  filter(commentCount &gt;= 100) %&gt;%
+  filter(topic == &quot;deal&quot;) %&gt;%
+  distinct()
+
+nrow(deal_msnbc) #20
+
+nat_emergency_msnbc &lt;- msnbc_video_stats %&gt;%
+  filter(commentCount &gt;= 100) %&gt;%
+  filter(topic == &quot;national emergency&quot;) %&gt;%
+  distinct()
+
+nrow(nat_emergency_msnbc) #22
+
+close_border_msnbc &lt;- msnbc_video_stats %&gt;%
+  filter(commentCount &gt;= 100) %&gt;%
+  filter(topic == &quot;border crisis/closing of border&quot;) %&gt;%
+  filter(date.x &lt; &quot;2019-05-01&quot;) %&gt;%
+  distinct()
+
+nrow(close_border_msnbc) #16
+
+campaign_fox &lt;- fox_video_stats %&gt;%
+  filter(commentCount &gt;= 100) %&gt;%
+  filter(date.x &gt;= &quot;2015-06-16&quot;) %&gt;% filter(date.x &lt; &quot;2016-05-04&quot; ) %&gt;%
+  distinct()
+
+nrow(campaign_fox) #9
+
+nomination_fox &lt;- fox_video_stats %&gt;%
+  filter(commentCount &gt;= 100) %&gt;%
+  filter(date.x &gt;= &quot;2016-05-04&quot;) %&gt;% filter(date.x &lt; &quot;2016-09-11&quot;) %&gt;%
+  distinct()
+
+nrow(nomination_fox) #6
+
+preselect_fox &lt;- fox_video_stats %&gt;%
+  filter(commentCount &gt;= 70) %&gt;%
+  filter(date.x &gt;= &quot;2016-09-11&quot;) %&gt;% filter(date.x &lt; &quot;2017-01-20&quot;) %&gt;%
+  distinct()
+
+nrow(preselect_fox) #10
+
+earlydiscussion_fox &lt;- fox_video_stats %&gt;%
+  filter(commentCount &gt;= 100) %&gt;%
+  filter(topic == &quot;executive order/early budget discussions/&quot;) %&gt;%
+  distinct()
+
+nrow(earlydiscussion_fox) #54
+
+border_crisis_fox &lt;- fox_video_stats %&gt;%
+  filter(commentCount &gt;= 100) %&gt;%
+  filter(topic == &quot;border crisis&quot;) %&gt;%
+  distinct()
+
+nrow(border_crisis_fox) #61
+
+shutdown_fox &lt;- fox_video_stats %&gt;%
+  filter(commentCount &gt;= 100) %&gt;%
+  filter(topic == &quot;shutdown&quot;) %&gt;%
+  distinct()
+
+nrow(shutdown_fox) #100
+
+deal_fox &lt;- fox_video_stats %&gt;%
+  filter(commentCount &gt;= 100) %&gt;%
+  filter(topic == &quot;deal&quot;) %&gt;%
+  distinct()
+
+nrow(deal_fox) #26
+
+nat_emergency_fox &lt;- fox_video_stats %&gt;%
+  filter(commentCount &gt;= 100) %&gt;%
+  filter(topic == &quot;national emergency&quot;) %&gt;%
+  distinct()
+
+nrow(nat_emergency_fox) #24
+
+close_border_fox &lt;- fox_video_stats %&gt;%
+  filter(commentCount &gt;= 100) %&gt;%
+  filter(topic == &quot;border crisis/closing of border&quot;) %&gt;%
+  filter(date.x &lt; &quot;2019-05-01&quot;) %&gt;%
+  distinct()
+
+nrow(close_border_fox) #26
+
+# Extract the comments for these videos
+
+c_campaign_msnbc &lt;-
+  lapply(as.character(campaign_msnbc$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_campaign_msnbc &lt;- rbindlist(c_campaign_msnbc)
+
+c_nomination_msnbc &lt;-
+  lapply(as.character(nomination_msnbc$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_nomination_msnbc &lt;- rbindlist(c_nomination_msnbc)
+
+c_preselect_msnbc &lt;-
+  lapply(as.character(preselect_msnbc$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_preselect_msnbc &lt;- rbindlist(c_preselect_msnbc)
+
+c_earlydiscussion_msnbc &lt;-
+  lapply(as.character(earlydiscussion_msnbc$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+  
+c_earlydiscussion_msnbc &lt;- rbindlist(c_earlydiscussion_msnbc)
+
+c_border_crisis_msnbc &lt;-
+  lapply(as.character(border_crisis_msnbc$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+  
+c_border_crisis_msnbc &lt;- rbindlist(c_border_crisis_msnbc[1:57])
+
+c_shutdown_msnbc &lt;-
+  lapply(as.character(shutdown_msnbc$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+  
+c_shutdown_msnbc &lt;- rbindlist(c_shutdown_msnbc)
+
+c_deal_msnbc &lt;-
+  lapply(as.character(deal_msnbc$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_deal_msnbc &lt;- rbindlist(c_deal_msnbc)
+
+c_nat_emergency_msnbc &lt;-
+  lapply(as.character(nat_emergency_msnbc$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_nat_emergency_msnbc &lt;- rbindlist(c_nat_emergency_msnbc)
+
+c_close_border_msnbc &lt;-
+  lapply(as.character(close_border_msnbc$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_close_border_msnbc &lt;- rbindlist(c_close_border_msnbc)
+
+c_campaign_fox &lt;-
+  lapply(as.character(campaign_fox$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_nomination_fox &lt;-
+  lapply(as.character(nomination_fox$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_preselect_fox &lt;-
+  lapply(as.character(preselect_fox$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_earlydiscussion_fox &lt;-
+  lapply(as.character(earlydiscussion_fox$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_border_crisis_fox &lt;-
+  lapply(as.character(border_crisis_fox$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_shutdown_fox &lt;-
+  lapply(as.character(shutdown_fox$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_deal_fox &lt;- lapply(as.character(deal_fox$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+})
+
+c_nat_emergency_fox &lt;-
+  lapply(as.character(nat_emergency_fox$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+c_close_border_fox &lt;-
+  lapply(as.character(close_border_fox$video_id), function(x) {
+  get_all_comments(c(video_id = x), max_results = 5000)
+  })
+
+
+
+#-------------------------------
+for(var in c(
+  c_campaign_fox,
+  c_nomination_fox,
+  c_preselect_fox,
+  c_earlydiscussion_fox,
+  c_border_crisis_fox,
+  c_shutdown_fox,
+  c_deal_fox,
+  c_nat_emergency_fox,
+  c_close_border_fox
+  )) {
+  var &lt;- rbindlist(var)
+  }
+
+#assign time period/topic for each comment
+c_campaign_fox$topic &lt;- &quot;campaign before Republican nomination&quot;
+c_nomination_fox$topic &lt;- &quot;Republican nomination&quot;
+c_preselect_fox$topic &lt;- &quot;president-elect&quot;
+c_earlydiscussion_fox$topic &lt;- &quot;early discussion about funding&quot;
+c_border_crisis_fox$topic &lt;- &quot;border crisis&quot;
+c_shutdown_fox$topic &lt;- &quot;shutdown&quot;
+c_deal_fox$topic &lt;- &quot;deal&quot;
+c_nat_emergency_fox$topic &lt;- &quot;national emergency&quot;
+c_close_border_fox$topic &lt;- &quot;close border&quot;
+
+
+c_campaign_msnbc$topic &lt;- &quot;campaign before Republican nomination&quot;
+c_nomination_msnbc$topic &lt;- &quot;Republican nomination&quot;
+c_preselect_msnbc$topic &lt;- &quot;president-elect&quot;
+c_earlydiscussion_msnbc$topic &lt;- &quot;early discussion about funding&quot;
+c_border_crisis_msnbc$topic &lt;- &quot;border crisis&quot;
+c_shutdown_msnbc$topic &lt;- &quot;shutdown&quot;
+c_deal_msnbc$topic &lt;- &quot;deal&quot;
+c_nat_emergency_msnbc$topic &lt;- &quot;national emergency&quot;
+c_close_border_msnbc$topic &lt;- &quot;close border&quot;
+
+fox_1 &lt;-
+  bind_rows(
+  c_campaign_fox,
+  c_nomination_fox,
+  c_preselect_fox,
+  c_earlydiscussion_fox,
+  c_border_crisis_fox
+  )
+fox_2 &lt;- bind_rows(c_shutdown_fox, c_deal_fox)
+fox_3 &lt;- bind_rows(c_nat_emergency_fox, c_close_border_fox)
+
+msnbc &lt;-
+  bind_rows(
+  c_campaign_msnbc,
+  c_nomination_msnbc,
+  c_preselect_msnbc,
+  c_earlydiscussion_msnbc,
+  c_border_crisis_msnbc,
+  c_shutdown_msnbc,
+  c_deal_msnbc,
+  c_nat_emergency_msnbc,
+  c_close_border_msnbc
+  )
+
+
+write_feather(videostats_fox, path = &quot;~/BigDataInImmigrationResearch/fox_videos.feather&quot;)
+write_feather(videostats_msnbc, path = &quot;~/BigDataInImmigrationResearch/msnbc_videos.feather&quot;)
+
+write_feather(msnbc, path = &quot;~/BigDataInImmigrationResearch/msnbc_comments.feather&quot;)
+write_feather(fox_1, path = &quot;~/BigDataInImmigrationResearch/fox_1_comments.feather&quot;)
+write_feather(fox_2, path = &quot;~/BigDataInImmigrationResearch/fox_2_comments.feather&quot;)
+write_feather(fox_3, path = &quot;~/BigDataInImmigrationResearch/fox_3_comments.feather&quot;)</code></pre>
+</div>
+<div id="prepare-the-data-for-further-analysis" class="section level4">
+<h4>Prepare the data for further analysis</h4>
+<pre class="r"><code># Read data
+comments1 &lt;- read_feather(&quot;Data/fox_1_comments.feather&quot;)
+comments1$channel &lt;- &quot;fox&quot;
+comments2 &lt;- read_feather(&quot;Data/fox_2_comments.feather&quot;)
+comments2$channel &lt;- &quot;fox&quot;
+comments3 &lt;- read_feather(&quot;Data/fox_3_comments.feather&quot;)
+comments3$channel &lt;- &quot;fox&quot;
+comments4 &lt;- read_feather(&quot;Data/msnbc_comments.feather&quot;)
+comments4$channel &lt;- &quot;msnbc&quot;
+
+# Bring them all together
+comments &lt;- rbind(comments1, comments2, comments3, comments4)
+
+fox &lt;- rbind(comments1, comments2, comments3)
+msnbc &lt;- comments4
+
+### Define three categories
+# 
+# 1. Persons who only comment on FOX
+# 2. Persons who only comment on MNSBC
+# 3. Persons who comment on both
+
+# only fox users
+fox_users &lt;-
+  dplyr::anti_join(fox, msnbc, by = 'authorChannelId.value')
+
+fox_users$group &lt;- 1
+
+# only msnbc users
+msnbc_users &lt;-
+  dplyr::anti_join(msnbc, fox, by = 'authorChannelId.value')
+
+msnbc_users$group &lt;- 2
+
+# both
+both &lt;- rbind(fox_users, msnbc_users)
+
+overlap &lt;-
+  dplyr::anti_join(comments, both, by = 'authorChannelId.value')
+
+overlap$group &lt;- 3
+
+# bring them back together
+data &lt;- rbind(overlap, fox_users, msnbc_users)
+
+videos_fox &lt;- read_feather(&quot;Data/fox_videos.feather&quot;)
+videos_msnbc &lt;- read_feather(&quot;Data/msnbc_videos.feather&quot;)
+videos &lt;- rbind(videos_fox, videos_msnbc)
+colnames(videos)[colnames(videos) == 'video_id'] &lt;- 'videoId'
+fulldata &lt;- merge(videos, data, by = &quot;videoId&quot;)</code></pre>
 </div>
 <div id="data-preprocessing" class="section level4">
 <h4>Data preprocessing</h4>
-<!-- Cosima's part -->
 <pre class="r"><code># Prepare the corpus
 comments &lt;- fulldata %&gt;%
   dplyr::group_by(group) %&gt;%
@@ -240,7 +804,6 @@ cleaned_comments &lt;- tidy_comments %&gt;%
 </div>
 <div id="visualization" class="section level4">
 <h4>Visualization</h4>
-<!-- Cosima's part -->
 <div id="descriptives-plot" class="section level5">
 <h5>Descriptives Plot</h5>
 <pre class="r"><code>## Plot distribution in barplot
