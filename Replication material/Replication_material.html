@@ -811,39 +811,39 @@ cleaned_comments &lt;- tidy_comments %&gt;%
 deslab &lt;- c(&quot;Fox&quot;, &quot;MSNBC&quot;, &quot;Overlap&quot;)
 
 ggplot(descriptives, aes(factor(group), percentage, fill = factor(color))) +
-geom_bar(
-stat = 'identity',
-position = 'dodge',
-text = paste(
-'Group:',
-descriptives$group,
-'&lt;br&gt;Percent: ',
-sprintf(&quot;%.2f%%&quot;, descriptives$percentage)
-)
-) +
-labs(title = &quot;Descriptive statistics&quot;,
-y = &quot;Percentage&quot;,
-x = &quot;&quot;) +
-scale_fill_manual(
-values = wes_palette(&quot;Chevalier1&quot;),
-name = &quot;&quot;,
-breaks = c(&quot;1&quot;, &quot;2&quot;, &quot;3&quot;),
-labels = c(&quot;Users&quot;, &quot;Comments&quot;, &quot;Videos&quot;)
-) +
-scale_x_discrete(labels = deslab) +
-theme_classic() </code></pre>
+  geom_bar(
+    stat = 'identity',
+    position = 'dodge',
+    text = paste(
+      'Group:',
+      descriptives$group,
+      '&lt;br&gt;Percent: ',
+      sprintf(&quot;%.2f%%&quot;, descriptives$percentage)
+    )
+  ) +
+  labs(title = &quot;Descriptive statistics&quot;,
+       y = &quot;Percentage&quot;,
+       x = &quot;&quot;) +
+  scale_fill_manual(
+    values = wes_palette(&quot;Chevalier1&quot;),
+    name = &quot;&quot;,
+    breaks = c(&quot;1&quot;, &quot;2&quot;, &quot;3&quot;),
+    labels = c(&quot;Users&quot;, &quot;Comments&quot;, &quot;Videos&quot;)
+  ) +
+  scale_x_discrete(labels = deslab) +
+  theme_classic() </code></pre>
 </div>
 <div id="sentiment-analysis" class="section level5">
 <h5>Sentiment analysis</h5>
 <pre class="r"><code>sentiment_by_time &lt;- cleaned_comments %&gt;%
-# Define a new column using floor_date()
-mutate(date = floor_date(as.Date(publishedAt), unit = &quot;week&quot;)) %&gt;%
-# Group by date
-group_by(group, date) %&gt;%
-mutate(total_words = n()) %&gt;%
-ungroup() %&gt;%
-# Implement sentiment analysis using the Bing lexicon
-inner_join(get_sentiments(&quot;bing&quot;))</code></pre>
+  # Define a new column using floor_date()
+  mutate(date = floor_date(as.Date(publishedAt), unit = &quot;day&quot;)) %&gt;%
+  # Group by group, date
+  group_by(group, date) %&gt;% 
+  mutate(total_words = n()) %&gt;%
+  ungroup() %&gt;%
+  # Implement sentiment analysis using the Bing lexicon
+  inner_join(get_sentiments(&quot;bing&quot;))</code></pre>
 </div>
 <div id="visualization-1" class="section level5">
 <h5>Visualization</h5>
@@ -851,178 +851,180 @@ inner_join(get_sentiments(&quot;bing&quot;))</code></pre>
 labs &lt;- c(&quot;1&quot; = &quot;Fox users&quot;, &quot;2&quot; = &quot;MSNBC users&quot;, &quot;3&quot; = &quot;Both&quot;)
 
 sentiment_by_time %&gt;%
-# Filter for positive and negative words
-filter(sentiment %in% c(&quot;positive&quot;, &quot;negative&quot;)) %&gt;%
-# Count by date, sentiment, and total_words
-count(group, date, sentiment, total_words) %&gt;%
-ungroup() %&gt;%
-mutate(percent = n / total_words) %&gt;%
-mutate(perc = percent * 100) %&gt;%
-# Set up the plot with aes()
-ggplot(aes(date, percent, fill = sentiment)) +
-geom_col(aes(
-text = paste(
-'Date:',
-as.Date(date),
-'&lt;br&gt;Percent: ',
-sprintf(&quot;%.2f%%&quot;, perc),
-'&lt;br&gt;Sentiment: ',
-sentiment
-)
+  # Filter for positive and negative words
+  filter(sentiment %in% c(&quot;positive&quot;, &quot;negative&quot;)) %&gt;%
+  # Count by group, date, sentiment, and total_words
+  count(group, date, sentiment, total_words) %&gt;%
+  ungroup() %&gt;%
+  mutate(percent = n / total_words) %&gt;%
+  mutate(perc = percent * 100) %&gt;%
+  # Set up the plot with aes()
+  ggplot(aes(date, percent, fill = sentiment)) +
+  geom_col(
+  aes(
+  text = paste(
+  'Date:',
+  as.Date(date),
+  '&lt;br&gt;Percent: ',
+  sprintf(&quot;%.2f%%&quot;, perc),
+  '&lt;br&gt;Sentiment: ',
+  sentiment
+  )
 )) +
-scale_fill_manual(values = wes_palette(&quot;Chevalier1&quot;)) +
-facet_wrap(~ group, labeller = as_labeller(labs)) +
-labs(
-title = &quot;Comparison between user groups&quot;,
-x = &quot;Time&quot;,
-y = &quot;Percentage&quot;,
-color = &quot;Sentiment&quot;,
-fill = &quot;Sentiment&quot;
-) +
-scale_y_continuous(
-labels = function(percentage)
-paste0(percentage * 100, &quot;%&quot;)
-) + # Multiply by 100 &amp; add %
-theme_minimal()
+  scale_fill_manual(values = wes_palette(&quot;Chevalier1&quot;)) +
+  facet_wrap( ~ group, labeller = as_labeller(labs)) +
+  labs(
+  title = &quot;Comparison between user groups&quot;,
+  x = &quot;Time&quot;,
+  y = &quot;Percentage&quot;,
+  color = &quot;Sentiment&quot;,
+  fill = &quot;Sentiment&quot;
+  ) +
+  scale_y_continuous(
+  labels = function(percentage)
+  paste0(percentage * 100, &quot;%&quot;)
+  ) + # Multiply by 100 &amp; add %
+  theme_minimal()
 
 # Write a function for plotting the following plots
-plot_sentiment &lt;- function(dat,groupno,name,labs1,b){
-a &lt;- dat %&gt;%
-# Filter for positive and negative words
-filter(sentiment %in% c(&quot;positive&quot;, &quot;negative&quot;)) %&gt;%
-filter(group == groupno) %&gt;%
-# Count by date, sentiment, and total_words
-count(group, date, sentiment, total_words) %&gt;%
-ungroup() %&gt;%
-mutate(percent = n / total_words) %&gt;%
-mutate(perc = percent * 100) %&gt;%
-ggplot() +
-geom_col(aes(
-date,
-percent,
-fill = sentiment,
-text = paste(
-'Date:',
-as.Date(date),
-'&lt;br&gt;Percent: ',
-sprintf(&quot;%.2f%%&quot;, perc),
-'&lt;br&gt;Sentiment: ',
-sentiment
-)
-)) +
-labs(
-title = as.character(name),
-x = &quot;Time&quot;,
-y = &quot;Percentage&quot;,
-color = &quot;Sentiment&quot;
-) +
-scale_y_continuous(
-labels = function(percentage)
-paste0(percentage * 100, &quot;%&quot;)
-) + # Multiply by 100 &amp; add %
-scale_fill_manual(values = wes_palette(&quot;Chevalier1&quot;)) +
-theme_classic() +
-geom_vline(xintercept = as.numeric(as.Date(&quot;2017-05-03&quot;)), linetype =
-4) +
-annotate(
-&quot;text&quot;,
-x = as.Date(&quot;2017-04-03&quot;),
-y = b,
-angle = 90,
-label = &quot;Campaign for primaries&quot;,
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date(&quot;2016-08-11&quot;)), linetype =
-4) +
-annotate(
-&quot;text&quot;,
-x = as.Date(&quot;2016-08-11&quot;),
-y = b,
-angle = 90,
-label = &quot;Republican nominee&quot;,
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date(&quot;2017-01-19&quot;)), linetype =
-4) +
-annotate(
-&quot;text&quot;,
-x = as.Date(&quot;2017-01-19&quot;),
-y = b,
-angle = 90,
-label = &quot;President-Elect&quot;,
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date(&quot;2018-03-31&quot;)), linetype =
-4) +
-annotate(
-&quot;text&quot;,
-x = as.Date(&quot;2018-03-31&quot;),
-y = b,
-angle = 90,
-label = &quot;Early discussions&quot;,
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date(&quot;2018-11-30&quot;)), linetype =
-4) +
-annotate(
-&quot;text&quot;,
-x = as.Date(&quot;2018-11-30&quot;),
-y = b,
-angle = 90,
-label = &quot;Border crisis I&quot;,
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date(&quot;2019-01-25&quot;)), linetype =
-4) +
-annotate(
-&quot;text&quot;,
-x = as.Date(&quot;2019-01-25&quot;),
-y = b,
-angle = 90,
-label = &quot;Shutdown&quot;,
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date(&quot;2019-02-14&quot;)), linetype =
-4) +
-annotate(
-&quot;text&quot;,
-x = as.Date(&quot;2019-02-14&quot;),
-y = b,
-angle = 90,
-label = &quot;Deal over shutdown&quot;,
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date(&quot;2019-03-28&quot;)), linetype =
-4) +
-annotate(
-&quot;text&quot;,
-x = as.Date(&quot;2019-03-28&quot;),
-y = b,
-angle = 90,
-label = &quot;National emergency&quot;,
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date(&quot;2019-04-30&quot;)), linetype =
-4) +
-annotate(
-&quot;text&quot;,
-x = as.Date(&quot;2019-04-30&quot;),
-y = b,
-angle = 90,
-label = &quot;Border crisis II&quot;,
-vjust = 1.2,
-size = 2
-) +
-scale_fill_manual(values = wes_palette(&quot;Chevalier1&quot;))
-return(a)
+plot_sentiment &lt;- function(dat, groupno, name, labs1, b) {
+  a &lt;- dat %&gt;%
+  # Filter for positive and negative words
+  filter(sentiment %in% c(&quot;positive&quot;, &quot;negative&quot;)) %&gt;%
+  filter(group == groupno) %&gt;%
+  # Count by date, sentiment, and total_words
+  count(date, sentiment, total_words) %&gt;%
+  ungroup() %&gt;%
+  mutate(percent = n / total_words) %&gt;%
+  mutate(perc = percent * 100) %&gt;%
+  ggplot() +
+    geom_col(aes(
+    date,
+    percent,
+    fill = sentiment,
+    text = paste(
+    'Date:',
+    as.Date(date),
+    '&lt;br&gt;Percent: ',
+    sprintf(&quot;%.2f%%&quot;, perc),
+    '&lt;br&gt;Sentiment: ',
+    sentiment
+    )
+    )) +
+  labs(
+  title = as.character(name),
+    x = &quot;Time&quot;,
+    y = &quot;Percentage&quot;,
+    color = &quot;Sentiment&quot;
+  ) +
+    scale_y_continuous(
+      labels = function(percentage)
+      paste0(percentage * 100, &quot;%&quot;
+      )
+  ) + # Multiply by 100 &amp; add %
+    scale_fill_manual(values = wes_palette(&quot;Chevalier1&quot;)) +
+    theme_classic() +
+    geom_vline(xintercept = as.numeric(as.Date(&quot;2017-05-03&quot;)), linetype =
+                 4) +
+    annotate(
+      &quot;text&quot;,
+      x = as.Date(&quot;2017-04-03&quot;),
+      y = b,
+      angle = 90,
+      label = &quot;Campaign for primaries&quot;,
+      vjust = 1.2,
+      size = 2
+      ) +
+      geom_vline(xintercept = as.numeric(as.Date(&quot;2016-08-11&quot;)), linetype =
+      4) +
+    annotate(
+      &quot;text&quot;,
+      x = as.Date(&quot;2016-08-11&quot;),
+      y = b,
+      angle = 90,
+      label = &quot;Republican nominee&quot;,
+      vjust = 1.2,
+      size = 2
+      ) +
+      geom_vline(xintercept = as.numeric(as.Date(&quot;2017-01-19&quot;)), linetype =
+      4) +
+    annotate(
+      &quot;text&quot;,
+      x = as.Date(&quot;2017-01-19&quot;),
+      y = b,
+      angle = 90,
+      label = &quot;President-Elect&quot;,
+      vjust = 1.2,
+      size = 2
+      ) +
+      geom_vline(xintercept = as.numeric(as.Date(&quot;2018-03-31&quot;)), linetype =
+      4) +
+    annotate(
+      &quot;text&quot;,
+      x = as.Date(&quot;2018-03-31&quot;),
+      y = b,
+      angle = 90,
+      label = &quot;Early discussions&quot;,
+      vjust = 1.2,
+      size = 2
+      ) +
+      geom_vline(xintercept = as.numeric(as.Date(&quot;2018-11-30&quot;)), linetype =
+      4) +
+    annotate(
+      &quot;text&quot;,
+      x = as.Date(&quot;2018-11-30&quot;),
+      y = b,
+      angle = 90,
+      label = &quot;Border crisis I&quot;,
+      vjust = 1.2,
+      size = 2
+      ) +
+      geom_vline(xintercept = as.numeric(as.Date(&quot;2019-01-25&quot;)), linetype =
+      4) +
+    annotate(
+      &quot;text&quot;,
+      x = as.Date(&quot;2019-01-25&quot;),
+      y = b,
+      angle = 90,
+      label = &quot;Shutdown&quot;,
+      vjust = 1.2,
+      size = 2
+      ) +
+      geom_vline(xintercept = as.numeric(as.Date(&quot;2019-02-14&quot;)), linetype =
+      4) +
+    annotate(
+      &quot;text&quot;,
+      x = as.Date(&quot;2019-02-14&quot;),
+      y = b,
+      angle = 90,
+      label = &quot;Deal over shutdown&quot;,
+      vjust = 1.2,
+      size = 2
+      ) +
+      geom_vline(xintercept = as.numeric(as.Date(&quot;2019-03-28&quot;)), linetype =
+      4) +
+    annotate(
+      &quot;text&quot;,
+      x = as.Date(&quot;2019-03-28&quot;),
+      y = b,
+      angle = 90,
+      label = &quot;National emergency&quot;,
+      vjust = 1.2,
+      size = 2
+      ) +
+      geom_vline(xintercept = as.numeric(as.Date(&quot;2019-04-30&quot;)), linetype =
+      4) +
+    annotate(
+      &quot;text&quot;,
+      x = as.Date(&quot;2019-04-30&quot;),
+      y = b,
+      angle = 90,
+      label = &quot;Border crisis II&quot;,
+      vjust = 1.2,
+      size = 2
+      ) +
+  scale_fill_manual(values = wes_palette(&quot;Chevalier1&quot;))
+  return(a)
 }
 
 # Plot 2
@@ -1182,6 +1184,351 @@ size = 2
 <h4>Significance testing</h4>
 <!-- Chris' part -->
 </div>
+<div id="robustness-checks" class="section level4">
+<h4>Robustness checks</h4>
+</div>
+</div>
+<div id="robustness-tests-with-nrc-dictionary" class="section level3">
+<h3>Robustness tests with NRC dictionary</h3>
+<pre class="r"><code>sentiment_by_time &lt;- cleaned_comments %&gt;%
+  # Define a new column using floor_date()
+  mutate(date = floor_date(as.Date(publishedAt), unit = &quot;day&quot;)) %&gt;%
+  # Group by date
+  group_by(group, date) %&gt;%
+  mutate(total_words = n()) %&gt;%
+  ungroup() %&gt;%
+  # Implement sentiment analysis using the NRC lexicon
+  inner_join(get_sentiments(&quot;nrc&quot;))
+
+# Plot 1
+labs &lt;- c(&quot;1&quot; = &quot;Fox users&quot;, &quot;2&quot; = &quot;MSNBC users&quot;, &quot;3&quot; = &quot;Both&quot;)
+
+sentiment_by_time %&gt;%
+  # Filter for positive and negative words
+  filter(sentiment %in% c(&quot;positive&quot;, &quot;negative&quot;)) %&gt;%
+  # Count by date, sentiment, and total_words
+  count(group, date, sentiment, total_words) %&gt;%
+  ungroup() %&gt;%
+  mutate(percent = n / total_words) %&gt;%
+  mutate(perc = percent * 100) %&gt;%
+  # Set up the plot with aes()
+  ggplot(aes(date, percent, fill = sentiment)) +
+  geom_col(aes(
+    text = paste(
+      'Date:',
+      as.Date(date),
+      '&lt;br&gt;Percent: ',
+      sprintf(&quot;%.2f%%&quot;, perc),
+      '&lt;br&gt;Sentiment: ',
+      sentiment
+    )
+  )) +
+  scale_fill_manual(values = wes_palette(&quot;Chevalier1&quot;)) +
+  facet_wrap(~ group, labeller = as_labeller(labs)) +
+  labs(
+    title = &quot;Comparison between user groups&quot;,
+    x = &quot;Time&quot;,
+    y = &quot;Percentage&quot;,
+    color = &quot;Sentiment&quot;,
+    fill = &quot;Sentiment&quot;
+  ) +
+  scale_y_continuous(
+    labels = function(percentage)
+      paste0(percentage * 100, &quot;%&quot;)
+  ) + # Multiply by 100 &amp; add %
+  theme_minimal()
+
+# Write a function for plotting the following plots
+plot_sentiment &lt;- function(dat,groupno,name,labs1,b){
+  a &lt;- dat %&gt;%
+  # Filter for positive and negative words
+  filter(sentiment %in% c(&quot;positive&quot;, &quot;negative&quot;)) %&gt;%
+  filter(group == groupno) %&gt;%
+  # Count by date, sentiment, and total_words
+  count(group, date, sentiment, total_words) %&gt;%
+  ungroup() %&gt;%
+  mutate(percent = n / total_words) %&gt;%
+  mutate(perc = percent * 100) %&gt;%
+  ggplot() +
+  geom_col(aes(
+    date,
+    percent,
+    fill = sentiment,
+    text = paste(
+      'Date:',
+      as.Date(date),
+      '&lt;br&gt;Percent: ',
+      sprintf(&quot;%.2f%%&quot;, perc),
+      '&lt;br&gt;Sentiment: ',
+      sentiment
+    )
+  )) +
+  labs(
+    title = as.character(name),
+    x = &quot;Time&quot;,
+    y = &quot;Percentage&quot;,
+    color = &quot;Sentiment&quot;
+  ) +
+  scale_y_continuous(
+    labels = function(percentage)
+      paste0(percentage * 100, &quot;%&quot;)
+  ) + # Multiply by 100 &amp; add %
+  scale_fill_manual(values = wes_palette(&quot;Chevalier1&quot;)) +
+  theme_classic() +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2017-05-03&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2017-04-03&quot;),
+    y = b,
+    angle = 90,
+    label = &quot;Campaign for primaries&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2016-08-11&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2016-08-11&quot;),
+    y = b,
+    angle = 90,
+    label = &quot;Republican nominee&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2017-01-19&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2017-01-19&quot;),
+    y = b,
+    angle = 90,
+    label = &quot;President-Elect&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2018-03-31&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2018-03-31&quot;),
+    y = b,
+    angle = 90,
+    label = &quot;Early discussions&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2018-11-30&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2018-11-30&quot;),
+    y = b,
+    angle = 90,
+    label = &quot;Border crisis I&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2019-01-25&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2019-01-25&quot;),
+    y = b,
+    angle = 90,
+    label = &quot;Shutdown&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2019-02-14&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2019-02-14&quot;),
+    y = b,
+    angle = 90,
+    label = &quot;Deal over shutdown&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2019-03-28&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2019-03-28&quot;),
+    y = b,
+    angle = 90,
+    label = &quot;National emergency&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2019-04-30&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2019-04-30&quot;),
+    y = b,
+    angle = 90,
+    label = &quot;Border crisis II&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  scale_fill_manual(values = wes_palette(&quot;Chevalier1&quot;))
+  return(a)
+}
+
+# Plot 2
+plot_sentiment(sentiment_by_time,1,&quot;Fox users&quot;, labs1,0.3)
+
+
+# Plot 3
+plot_sentiment(sentiment_by_time,2,&quot;MSNBC users&quot;, labs1,0.75)
+
+# Plot 4
+plot_sentiment(sentiment_by_time,3,&quot;Overlapping users&quot;, labs1,0.25)
+
+
+# Plot 5
+labs1 &lt;- c(&quot;fox&quot; = &quot;Fox&quot;, &quot;msnbc&quot; = &quot;MSNBC&quot;)
+
+sentiment_by_time %&gt;%
+  # Filter for positive and negative words
+  filter(sentiment %in% c(&quot;positive&quot;, &quot;negative&quot;)) %&gt;%
+  filter(group == 3) %&gt;%
+  # Count by date, sentiment, and total_words
+  count(channel, group, date, sentiment, total_words) %&gt;%
+  ungroup() %&gt;%
+  mutate(percent = n / total_words) %&gt;%
+  mutate(perc = percent * 100) %&gt;%
+  # Set up the plot with aes()
+  ggplot() +
+  geom_col(aes(
+    date,
+    percent,
+    fill = sentiment,
+    text = paste(
+      'Date:',
+      as.Date(date),
+      '&lt;br&gt;Percent: ',
+      sprintf(&quot;%.2f%%&quot;, perc),
+      '&lt;br&gt;Sentiment: ',
+      sentiment
+    )
+  )) +
+  labs(
+    title = &quot;Both users (disaggregated by channel)&quot;,
+    x = &quot;Time&quot;,
+    y = &quot;Percentage&quot;,
+    color = &quot;Sentiment&quot;,
+    fill = &quot;Sentiment&quot;
+  ) +
+  scale_fill_manual(values = wes_palette(&quot;Chevalier1&quot;)) +
+  scale_y_continuous(
+    labels = function(percentage)
+      paste0(percentage * 100, &quot;%&quot;)
+  ) + # Multiply by 100 &amp; add %
+  facet_wrap( ~ channel, labeller = as_labeller(labs1)) +
+  theme_classic() +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2017-05-03&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2017-04-03&quot;),
+    y = 0.21,
+    angle = 90,
+    label = &quot;Campaign for primaries&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2016-08-11&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2016-08-11&quot;),
+    y = 0.21,
+    angle = 90,
+    label = &quot;Republican nominee&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2017-01-19&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2017-01-19&quot;),
+    y = 0.21,
+    angle = 90,
+    label = &quot;President-Elect&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2018-03-31&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2018-03-31&quot;),
+    y = 0.21,
+    angle = 90,
+    label = &quot;Early discussions&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2018-11-30&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2018-11-30&quot;),
+    y = 0.21,
+    angle = 90,
+    label = &quot;Border crisis I&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2019-01-25&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2019-01-25&quot;),
+    y = 0.21,
+    angle = 90,
+    label = &quot;Shutdown&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2019-02-14&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2019-02-14&quot;),
+    y = 0.21,
+    angle = 90,
+    label = &quot;Deal over shutdown&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2019-03-28&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2019-03-28&quot;),
+    y = 0.21,
+    angle = 90,
+    label = &quot;National emergency&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2019-04-30&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2019-04-30&quot;),
+    y = 0.21,
+    angle = 90,
+    label = &quot;Border crisis II&quot;,
+    vjust = 1.2,
+    size = 2
+  )</code></pre>
 </div>
 
 

@@ -123,8 +123,9 @@ labs <- c("1" = "Fox users", "2" ="MSNBC users", "3" = "Both")
 plot1 <- sentiment_by_time %>%
     # Filter for positive and negative words
     filter(sentiment %in% c("positive", "negative")) %>%
+    group_by(group, date, sentiment) %>% 
     # Count by date, sentiment, and total_words
-    count(group, date, sentiment, total_words) %>% 
+    count(total_words) %>% 
     # tally() %>% 
     ungroup() %>%
     #group_by(videoId) %>% 
