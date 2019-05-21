@@ -31,7 +31,8 @@ packages <-
     "feather",
     "tibble",
     "readxl",
-    "tuber"
+    "tuber",
+    "effsize"
   )
 install_load(packages)
 ```
@@ -859,150 +860,296 @@ plot_sentiment(sentiment_by_time,3,"Overlapping users", labs1,0.25)
 labs1 <- c("fox" = "Fox", "msnbc" = "MSNBC")
 
 sentiment_by_time %>%
-# Filter for positive and negative words
-filter(sentiment %in% c("positive", "negative")) %>%
-filter(group == 3) %>%
-# Count by date, sentiment, and total_words
-count(channel, group, date, sentiment, total_words) %>%
-ungroup() %>%
-mutate(percent = n / total_words) %>%
-mutate(perc = percent * 100) %>%
-# Set up the plot with aes()
-ggplot() +
-geom_col(aes(
-date,
-percent,
-fill = sentiment,
-text = paste(
-'Date:',
-as.Date(date),
-'<br>Percent: ',
-sprintf("%.2f%%", perc),
-'<br>Sentiment: ',
-sentiment
-)
-)) +
-labs(
-title = "Both users (disaggregated by channel)",
-x = "Time",
-y = "Percentage",
-color = "Sentiment",
-fill = "Sentiment"
-) +
-scale_fill_manual(values = wes_palette("Chevalier1")) +
-scale_y_continuous(
-labels = function(percentage)
-paste0(percentage * 100, "%")
-) + # Multiply by 100 & add %
-facet_wrap( ~ channel, labeller = as_labeller(labs1)) +
-theme_classic() +
-geom_vline(xintercept = as.numeric(as.Date("2017-05-03")), linetype =
-4) +
-annotate(
-"text",
-x = as.Date("2017-04-03"),
-y = 0.21,
-angle = 90,
-label = "Campaign for primaries",
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date("2016-08-11")), linetype =
-4) +
-annotate(
-"text",
-x = as.Date("2016-08-11"),
-y = 0.21,
-angle = 90,
-label = "Republican nominee",
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date("2017-01-19")), linetype =
-4) +
-annotate(
-"text",
-x = as.Date("2017-01-19"),
-y = 0.21,
-angle = 90,
-label = "President-Elect",
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date("2018-03-31")), linetype =
-4) +
-annotate(
-"text",
-x = as.Date("2018-03-31"),
-y = 0.21,
-angle = 90,
-label = "Early discussions",
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date("2018-11-30")), linetype =
-4) +
-annotate(
-"text",
-x = as.Date("2018-11-30"),
-y = 0.21,
-angle = 90,
-label = "Border crisis I",
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date("2019-01-25")), linetype =
-4) +
-annotate(
-"text",
-x = as.Date("2019-01-25"),
-y = 0.21,
-angle = 90,
-label = "Shutdown",
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date("2019-02-14")), linetype =
-4) +
-annotate(
-"text",
-x = as.Date("2019-02-14"),
-y = 0.21,
-angle = 90,
-label = "Deal over shutdown",
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date("2019-03-28")), linetype =
-4) +
-annotate(
-"text",
-x = as.Date("2019-03-28"),
-y = 0.21,
-angle = 90,
-label = "National emergency",
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date("2019-04-30")), linetype =
-4) +
-annotate(
-"text",
-x = as.Date("2019-04-30"),
-y = 0.21,
-angle = 90,
-label = "Border crisis II",
-vjust = 1.2,
-size = 2
-)
+  # Filter for positive and negative words
+  filter(sentiment %in% c("positive", "negative")) %>%
+  filter(group == 3) %>%
+  # Count by date, sentiment, and total_words
+  count(channel, group, date, sentiment, total_words) %>%
+  ungroup() %>%
+  mutate(percent = n / total_words) %>%
+  mutate(perc = percent * 100) %>%
+  # Set up the plot with aes()
+  ggplot() +
+  geom_col(aes(
+    date,
+    percent,
+    fill = sentiment,
+    text = paste(
+      'Date:',
+      as.Date(date),
+      '<br>Percent: ',
+      sprintf("%.2f%%", perc),
+      '<br>Sentiment: ',
+      sentiment
+    )
+  )) +
+  labs(
+    title = "Both users (disaggregated by channel)",
+    x = "Time",
+    y = "Percentage",
+    color = "Sentiment",
+    fill = "Sentiment"
+  ) +
+  scale_fill_manual(values = wes_palette("Chevalier1")) +
+  scale_y_continuous(
+  labels = function(percentage)
+  paste0(percentage * 100, "%")
+  ) + # Multiply by 100 & add %
+  facet_wrap( ~ channel, labeller = as_labeller(labs1)) +
+  theme_classic() +
+  geom_vline(xintercept = as.numeric(as.Date("2017-05-03")), linetype =
+  4) +
+  annotate(
+  "text",
+  x = as.Date("2017-04-03"),
+  y = 0.21,
+  angle = 90,
+  label = "Campaign for primaries",
+  vjust = 1.2,
+  size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date("2016-08-11")), linetype =
+               4) +
+  annotate(
+    "text",
+    x = as.Date("2016-08-11"),
+    y = 0.21,
+    angle = 90,
+    label = "Republican nominee",
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date("2017-01-19")), linetype =
+               4) +
+  annotate(
+    "text",
+    x = as.Date("2017-01-19"),
+    y = 0.21,
+    angle = 90,
+    label = "President-Elect",
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date("2018-03-31")), linetype =
+               4) +
+  annotate(
+    "text",
+    x = as.Date("2018-03-31"),
+    y = 0.21,
+    angle = 90,
+    label = "Early discussions",
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date("2018-11-30")), linetype =
+               4) +
+  annotate(
+    "text",
+    x = as.Date("2018-11-30"),
+    y = 0.21,
+    angle = 90,
+    label = "Border crisis I",
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date("2019-01-25")), linetype =
+               4) +
+  annotate(
+    "text",
+    x = as.Date("2019-01-25"),
+    y = 0.21,
+    angle = 90,
+    label = "Shutdown",
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date("2019-02-14")), linetype =
+               4) +
+  annotate(
+    "text",
+    x = as.Date("2019-02-14"),
+    y = 0.21,
+    angle = 90,
+    label = "Deal over shutdown",
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date("2019-03-28")), linetype =
+               4) +
+  annotate(
+    "text",
+    x = as.Date("2019-03-28"),
+    y = 0.21,
+    angle = 90,
+    label = "National emergency",
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date("2019-04-30")), linetype =
+               4) +
+  annotate(
+    "text",
+    x = as.Date("2019-04-30"),
+    y = 0.21,
+    angle = 90,
+    label = "Border crisis II",
+    vjust = 1.2,
+    size = 2
+  )
 ```
 
 #### Significance testing
-<!-- Chris' part -->
 ```{r, eval=FALSE}
+groups <- split(sentiment_by_time, sentiment_by_time$group)
+ogroups <- split(groups$'3', (groups$'3')$channel)
 
+datefox <- unique((groups$'1')$date)
+datemsn <- unique((groups$'2')$date)
+dateovl <- unique((groups$'3')$date)
+dateovf <- unique((ogroups$fox)$date)
+dateovm <- unique((ogroups$msbnc)$date)
+sentfox <- c()
+sentmsn <- c()
+sentovl <- c()
+sentovf <- c()
+sentovm <- c()
+
+for (i in 1:length(datefox)) {
+  sent <- 0
+  totalwords <- 0
+  for (j in 1:length((groups$'1')$date)) {
+    if ((groups$'1')$date[j] == datefox[i] & (groups$'1')$sentiment[j] == 'negative') {
+      sent <- sent - ((groups$'1')$total_words[j])
+      totalwords  <- totalwords + (groups$'1')$total_words[j]
+    }
+    else if ((groups$'1')$date[j] == datefox[i] & (groups$'1')$sentiment[j] == 'positive') {
+      sent <- sent + ((groups$'1')$total_words[j])
+      totalwords  <- totalwords + (groups$'1')$total_words[j]
+    }
+  }
+  sentfox[i] <- sent/totalwords 
+}
+
+for (i in 1:length(datemsn)) {
+  sent <- 0
+  totalwords <- 0
+  for (j in 1:length((groups$'2')$date)) {
+    if ((groups$'2')$date[j] == datemsn[i] & (groups$'2')$sentiment[j] == 'negative') {
+      sent <- sent - ((groups$'2')$total_words[j])
+      totalwords  <- totalwords + (groups$'2')$total_words[j]
+    }
+    else if ((groups$'2')$date[j] == datemsn[i] & (groups$'2')$sentiment[j] == 'positive') {
+      sent <- sent + ((groups$'2')$total_words[j])
+      totalwords  <- totalwords + (groups$'2')$total_words[j]
+    }
+  }
+  sentmsn[i] <- sent/totalwords 
+}
+
+for (i in 1:length(dateovl)) {
+  sent <- 0
+  totalwords <- 0
+  for (j in 1:length((groups$'3')$date)) {
+    if ((groups$'3')$date[j] == dateovl[i] & (groups$'3')$sentiment[j] == 'negative') {
+      sent <- sent - ((groups$'3')$total_words[j])
+      totalwords  <- totalwords + (groups$'3')$total_words[j]
+    }
+    else if ((groups$'3')$date[j] == dateovl[i] & (groups$'3')$sentiment[j] == 'positive') {
+      sent <- sent + ((groups$'3')$total_words[j])
+      totalwords  <- totalwords + (groups$'3')$total_words[j]
+    }
+  }
+  
+  sentovl[i] <- sent/totalwords 
+}
+
+for (i in 1:length(dateovf)) {
+  sent <- 0
+  totalwords <- 0
+  for (j in 1:length((ogroups$fox)$date)) {
+    if ((ogroups$fox)$date[j] == dateovf[i] & (ogroups$fox)$sentiment[j] == 'negative') {
+      sent <- sent - ((ogroups$fox)$total_words[j])
+      totalwords  <- totalwords + (ogroups$fox)$total_words[j]
+    }
+    else if ((ogroups$fox)$date[j] == dateovf[i] & (ogroups$fox)$sentiment[j] == 'positive') {
+      sent <- sent + ((ogroups$fox)$total_words[j])
+      totalwords  <- totalwords + (ogroups$fox)$total_words[j]
+    }
+  }
+  
+  sentovf[i] <- sent/totalwords 
+}
+
+for (i in 1:length(dateovm)) {
+  sent <- 0
+  totalwords <- 0
+  for (j in 1:length((ogroups$msbnc)$date)) {
+    if ((ogroups$msbnc)$date[j] == dateovm[i] & (ogroups$msbnc)$sentiment[j] == 'negative') {
+      sent <- sent - ((ogroups$msbnc)$total_words[j])
+      totalwords  <- totalwords + (ogroups$msbnc)$total_words[j]
+    }
+    else if ((ogroups$msbnc)$date[j] == dateovm[i] & (ogroups$msbnc)$sentiment[j] == 'positive') {
+      sent <- sent + ((ogroups$msbnc)$total_words[j])
+      totalwords  <- totalwords + (ogroups$msbnc)$total_words[j]
+    }
+  }
+  
+  sentovm[i] <- sent/totalwords 
+}
+
+cohen.d(sentfox,sentmsn)#negligible
+cohen.d(sentfox,sentovl)#negligible
+cohen.d(sentmsn,sentovl)#negligible
+cohen.d(sentfox,sentovf)#small
+cohen.d(sentfox,sentovm)#negligible
+cohen.d(sentmsn,sentovm)#negligible
+cohen.d(sentmsn,sentovf)#negligible
+cohen.d(sentovf,sentovm)#small
+
+timefox <- as.Date(datefox)-as.Date(min(datefox))
+timemsn <- as.Date(datemsn)-as.Date(min(datemsn))
+timeovl <- as.Date(dateovl)-as.Date(min(dateovl))
+timeovf <- as.Date(dateovf)-as.Date(min(dateovf))
+timeovm <- as.Date(dateovm)-as.Date(min(dateovm))
+
+sent <- append(sentfox,sentmsn)
+sent <- append(sent,sentovl)
+
+
+time <- append(timefox,timemsn)
+time <- append(time,timeovl)
+
+group1 <- append(rep("fox",length(sentfox)),rep("msnbc",length(sentmsn)))
+group1 <- append(group1,rep("overlap",length(sentovl)))
+
+group2 <- append(rep(NA,length(sentfox)+length(sentmsn)),rep("overlapf",length(sentovf)))
+group2 <- append(group2,rep("ovelapm",length(sentovm)))
+
+# Graphs for references
+
+sent.aov <- aov(sent ~ time + group1)
+summary(sent.aov)
+TukeyHSD(aov(sent ~ group1))
+plot(sent.aov,1)
+plot(sent.aov,2)
+
+# Box plot
+boxplot(sent ~ group1,
+        xlab = "Group", ylab = "Sentiment",
+        frame = FALSE, col = c("#00AFBB", "#E7B800", "#FC4E07"))
+# plotmeans
+#library("gplots")
+plotmeans(sent ~ group1, frame = FALSE,
+          xlab = "Group", ylab = "Sentiment",
+          main="Mean Plot with 95% CI") 
+
+# Plots for sentiment over time
+
+plot(time,sent)
+plot(timefox,sentfox)
+plot(timemsn,sentmsn)
+plot(timeovl,sentovl)
 ```
-
 
 #### Robustness checks
 

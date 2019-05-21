@@ -220,7 +220,8 @@ packages &lt;-
     &quot;feather&quot;,
     &quot;tibble&quot;,
     &quot;readxl&quot;,
-    &quot;tuber&quot;
+    &quot;tuber&quot;,
+    &quot;effsize&quot;
   )
 install_load(packages)</code></pre>
 </div>
@@ -1042,147 +1043,295 @@ plot_sentiment(sentiment_by_time,3,&quot;Overlapping users&quot;, labs1,0.25)
 labs1 &lt;- c(&quot;fox&quot; = &quot;Fox&quot;, &quot;msnbc&quot; = &quot;MSNBC&quot;)
 
 sentiment_by_time %&gt;%
-# Filter for positive and negative words
-filter(sentiment %in% c(&quot;positive&quot;, &quot;negative&quot;)) %&gt;%
-filter(group == 3) %&gt;%
-# Count by date, sentiment, and total_words
-count(channel, group, date, sentiment, total_words) %&gt;%
-ungroup() %&gt;%
-mutate(percent = n / total_words) %&gt;%
-mutate(perc = percent * 100) %&gt;%
-# Set up the plot with aes()
-ggplot() +
-geom_col(aes(
-date,
-percent,
-fill = sentiment,
-text = paste(
-'Date:',
-as.Date(date),
-'&lt;br&gt;Percent: ',
-sprintf(&quot;%.2f%%&quot;, perc),
-'&lt;br&gt;Sentiment: ',
-sentiment
-)
-)) +
-labs(
-title = &quot;Both users (disaggregated by channel)&quot;,
-x = &quot;Time&quot;,
-y = &quot;Percentage&quot;,
-color = &quot;Sentiment&quot;,
-fill = &quot;Sentiment&quot;
-) +
-scale_fill_manual(values = wes_palette(&quot;Chevalier1&quot;)) +
-scale_y_continuous(
-labels = function(percentage)
-paste0(percentage * 100, &quot;%&quot;)
-) + # Multiply by 100 &amp; add %
-facet_wrap( ~ channel, labeller = as_labeller(labs1)) +
-theme_classic() +
-geom_vline(xintercept = as.numeric(as.Date(&quot;2017-05-03&quot;)), linetype =
-4) +
-annotate(
-&quot;text&quot;,
-x = as.Date(&quot;2017-04-03&quot;),
-y = 0.21,
-angle = 90,
-label = &quot;Campaign for primaries&quot;,
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date(&quot;2016-08-11&quot;)), linetype =
-4) +
-annotate(
-&quot;text&quot;,
-x = as.Date(&quot;2016-08-11&quot;),
-y = 0.21,
-angle = 90,
-label = &quot;Republican nominee&quot;,
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date(&quot;2017-01-19&quot;)), linetype =
-4) +
-annotate(
-&quot;text&quot;,
-x = as.Date(&quot;2017-01-19&quot;),
-y = 0.21,
-angle = 90,
-label = &quot;President-Elect&quot;,
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date(&quot;2018-03-31&quot;)), linetype =
-4) +
-annotate(
-&quot;text&quot;,
-x = as.Date(&quot;2018-03-31&quot;),
-y = 0.21,
-angle = 90,
-label = &quot;Early discussions&quot;,
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date(&quot;2018-11-30&quot;)), linetype =
-4) +
-annotate(
-&quot;text&quot;,
-x = as.Date(&quot;2018-11-30&quot;),
-y = 0.21,
-angle = 90,
-label = &quot;Border crisis I&quot;,
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date(&quot;2019-01-25&quot;)), linetype =
-4) +
-annotate(
-&quot;text&quot;,
-x = as.Date(&quot;2019-01-25&quot;),
-y = 0.21,
-angle = 90,
-label = &quot;Shutdown&quot;,
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date(&quot;2019-02-14&quot;)), linetype =
-4) +
-annotate(
-&quot;text&quot;,
-x = as.Date(&quot;2019-02-14&quot;),
-y = 0.21,
-angle = 90,
-label = &quot;Deal over shutdown&quot;,
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date(&quot;2019-03-28&quot;)), linetype =
-4) +
-annotate(
-&quot;text&quot;,
-x = as.Date(&quot;2019-03-28&quot;),
-y = 0.21,
-angle = 90,
-label = &quot;National emergency&quot;,
-vjust = 1.2,
-size = 2
-) +
-geom_vline(xintercept = as.numeric(as.Date(&quot;2019-04-30&quot;)), linetype =
-4) +
-annotate(
-&quot;text&quot;,
-x = as.Date(&quot;2019-04-30&quot;),
-y = 0.21,
-angle = 90,
-label = &quot;Border crisis II&quot;,
-vjust = 1.2,
-size = 2
-)</code></pre>
+  # Filter for positive and negative words
+  filter(sentiment %in% c(&quot;positive&quot;, &quot;negative&quot;)) %&gt;%
+  filter(group == 3) %&gt;%
+  # Count by date, sentiment, and total_words
+  count(channel, group, date, sentiment, total_words) %&gt;%
+  ungroup() %&gt;%
+  mutate(percent = n / total_words) %&gt;%
+  mutate(perc = percent * 100) %&gt;%
+  # Set up the plot with aes()
+  ggplot() +
+  geom_col(aes(
+    date,
+    percent,
+    fill = sentiment,
+    text = paste(
+      'Date:',
+      as.Date(date),
+      '&lt;br&gt;Percent: ',
+      sprintf(&quot;%.2f%%&quot;, perc),
+      '&lt;br&gt;Sentiment: ',
+      sentiment
+    )
+  )) +
+  labs(
+    title = &quot;Both users (disaggregated by channel)&quot;,
+    x = &quot;Time&quot;,
+    y = &quot;Percentage&quot;,
+    color = &quot;Sentiment&quot;,
+    fill = &quot;Sentiment&quot;
+  ) +
+  scale_fill_manual(values = wes_palette(&quot;Chevalier1&quot;)) +
+  scale_y_continuous(
+  labels = function(percentage)
+  paste0(percentage * 100, &quot;%&quot;)
+  ) + # Multiply by 100 &amp; add %
+  facet_wrap( ~ channel, labeller = as_labeller(labs1)) +
+  theme_classic() +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2017-05-03&quot;)), linetype =
+  4) +
+  annotate(
+  &quot;text&quot;,
+  x = as.Date(&quot;2017-04-03&quot;),
+  y = 0.21,
+  angle = 90,
+  label = &quot;Campaign for primaries&quot;,
+  vjust = 1.2,
+  size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2016-08-11&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2016-08-11&quot;),
+    y = 0.21,
+    angle = 90,
+    label = &quot;Republican nominee&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2017-01-19&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2017-01-19&quot;),
+    y = 0.21,
+    angle = 90,
+    label = &quot;President-Elect&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2018-03-31&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2018-03-31&quot;),
+    y = 0.21,
+    angle = 90,
+    label = &quot;Early discussions&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2018-11-30&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2018-11-30&quot;),
+    y = 0.21,
+    angle = 90,
+    label = &quot;Border crisis I&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2019-01-25&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2019-01-25&quot;),
+    y = 0.21,
+    angle = 90,
+    label = &quot;Shutdown&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2019-02-14&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2019-02-14&quot;),
+    y = 0.21,
+    angle = 90,
+    label = &quot;Deal over shutdown&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2019-03-28&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2019-03-28&quot;),
+    y = 0.21,
+    angle = 90,
+    label = &quot;National emergency&quot;,
+    vjust = 1.2,
+    size = 2
+  ) +
+  geom_vline(xintercept = as.numeric(as.Date(&quot;2019-04-30&quot;)), linetype =
+               4) +
+  annotate(
+    &quot;text&quot;,
+    x = as.Date(&quot;2019-04-30&quot;),
+    y = 0.21,
+    angle = 90,
+    label = &quot;Border crisis II&quot;,
+    vjust = 1.2,
+    size = 2
+  )</code></pre>
 </div>
 </div>
 <div id="significance-testing" class="section level4">
 <h4>Significance testing</h4>
-<!-- Chris' part -->
+<pre class="r"><code>groups &lt;- split(sentiment_by_time, sentiment_by_time$group)
+ogroups &lt;- split(groups$'3', (groups$'3')$channel)
+
+datefox &lt;- unique((groups$'1')$date)
+datemsn &lt;- unique((groups$'2')$date)
+dateovl &lt;- unique((groups$'3')$date)
+dateovf &lt;- unique((ogroups$fox)$date)
+dateovm &lt;- unique((ogroups$msbnc)$date)
+sentfox &lt;- c()
+sentmsn &lt;- c()
+sentovl &lt;- c()
+sentovf &lt;- c()
+sentovm &lt;- c()
+
+for (i in 1:length(datefox)) {
+  sent &lt;- 0
+  totalwords &lt;- 0
+  for (j in 1:length((groups$'1')$date)) {
+    if ((groups$'1')$date[j] == datefox[i] &amp; (groups$'1')$sentiment[j] == 'negative') {
+      sent &lt;- sent - ((groups$'1')$total_words[j])
+      totalwords  &lt;- totalwords + (groups$'1')$total_words[j]
+    }
+    else if ((groups$'1')$date[j] == datefox[i] &amp; (groups$'1')$sentiment[j] == 'positive') {
+      sent &lt;- sent + ((groups$'1')$total_words[j])
+      totalwords  &lt;- totalwords + (groups$'1')$total_words[j]
+    }
+  }
+  sentfox[i] &lt;- sent/totalwords 
+}
+
+for (i in 1:length(datemsn)) {
+  sent &lt;- 0
+  totalwords &lt;- 0
+  for (j in 1:length((groups$'2')$date)) {
+    if ((groups$'2')$date[j] == datemsn[i] &amp; (groups$'2')$sentiment[j] == 'negative') {
+      sent &lt;- sent - ((groups$'2')$total_words[j])
+      totalwords  &lt;- totalwords + (groups$'2')$total_words[j]
+    }
+    else if ((groups$'2')$date[j] == datemsn[i] &amp; (groups$'2')$sentiment[j] == 'positive') {
+      sent &lt;- sent + ((groups$'2')$total_words[j])
+      totalwords  &lt;- totalwords + (groups$'2')$total_words[j]
+    }
+  }
+  sentmsn[i] &lt;- sent/totalwords 
+}
+
+for (i in 1:length(dateovl)) {
+  sent &lt;- 0
+  totalwords &lt;- 0
+  for (j in 1:length((groups$'3')$date)) {
+    if ((groups$'3')$date[j] == dateovl[i] &amp; (groups$'3')$sentiment[j] == 'negative') {
+      sent &lt;- sent - ((groups$'3')$total_words[j])
+      totalwords  &lt;- totalwords + (groups$'3')$total_words[j]
+    }
+    else if ((groups$'3')$date[j] == dateovl[i] &amp; (groups$'3')$sentiment[j] == 'positive') {
+      sent &lt;- sent + ((groups$'3')$total_words[j])
+      totalwords  &lt;- totalwords + (groups$'3')$total_words[j]
+    }
+  }
+  
+  sentovl[i] &lt;- sent/totalwords 
+}
+
+for (i in 1:length(dateovf)) {
+  sent &lt;- 0
+  totalwords &lt;- 0
+  for (j in 1:length((ogroups$fox)$date)) {
+    if ((ogroups$fox)$date[j] == dateovf[i] &amp; (ogroups$fox)$sentiment[j] == 'negative') {
+      sent &lt;- sent - ((ogroups$fox)$total_words[j])
+      totalwords  &lt;- totalwords + (ogroups$fox)$total_words[j]
+    }
+    else if ((ogroups$fox)$date[j] == dateovf[i] &amp; (ogroups$fox)$sentiment[j] == 'positive') {
+      sent &lt;- sent + ((ogroups$fox)$total_words[j])
+      totalwords  &lt;- totalwords + (ogroups$fox)$total_words[j]
+    }
+  }
+  
+  sentovf[i] &lt;- sent/totalwords 
+}
+
+for (i in 1:length(dateovm)) {
+  sent &lt;- 0
+  totalwords &lt;- 0
+  for (j in 1:length((ogroups$msbnc)$date)) {
+    if ((ogroups$msbnc)$date[j] == dateovm[i] &amp; (ogroups$msbnc)$sentiment[j] == 'negative') {
+      sent &lt;- sent - ((ogroups$msbnc)$total_words[j])
+      totalwords  &lt;- totalwords + (ogroups$msbnc)$total_words[j]
+    }
+    else if ((ogroups$msbnc)$date[j] == dateovm[i] &amp; (ogroups$msbnc)$sentiment[j] == 'positive') {
+      sent &lt;- sent + ((ogroups$msbnc)$total_words[j])
+      totalwords  &lt;- totalwords + (ogroups$msbnc)$total_words[j]
+    }
+  }
+  
+  sentovm[i] &lt;- sent/totalwords 
+}
+
+cohen.d(sentfox,sentmsn)#negligible
+cohen.d(sentfox,sentovl)#negligible
+cohen.d(sentmsn,sentovl)#negligible
+cohen.d(sentfox,sentovf)#small
+cohen.d(sentfox,sentovm)#negligible
+cohen.d(sentmsn,sentovm)#negligible
+cohen.d(sentmsn,sentovf)#negligible
+cohen.d(sentovf,sentovm)#small
+
+timefox &lt;- as.Date(datefox)-as.Date(min(datefox))
+timemsn &lt;- as.Date(datemsn)-as.Date(min(datemsn))
+timeovl &lt;- as.Date(dateovl)-as.Date(min(dateovl))
+timeovf &lt;- as.Date(dateovf)-as.Date(min(dateovf))
+timeovm &lt;- as.Date(dateovm)-as.Date(min(dateovm))
+
+sent &lt;- append(sentfox,sentmsn)
+sent &lt;- append(sent,sentovl)
+
+
+time &lt;- append(timefox,timemsn)
+time &lt;- append(time,timeovl)
+
+group1 &lt;- append(rep(&quot;fox&quot;,length(sentfox)),rep(&quot;msnbc&quot;,length(sentmsn)))
+group1 &lt;- append(group1,rep(&quot;overlap&quot;,length(sentovl)))
+
+group2 &lt;- append(rep(NA,length(sentfox)+length(sentmsn)),rep(&quot;overlapf&quot;,length(sentovf)))
+group2 &lt;- append(group2,rep(&quot;ovelapm&quot;,length(sentovm)))
+
+# Graphs for references
+
+sent.aov &lt;- aov(sent ~ time + group1)
+summary(sent.aov)
+TukeyHSD(aov(sent ~ group1))
+plot(sent.aov,1)
+plot(sent.aov,2)
+
+# Box plot
+boxplot(sent ~ group1,
+        xlab = &quot;Group&quot;, ylab = &quot;Sentiment&quot;,
+        frame = FALSE, col = c(&quot;#00AFBB&quot;, &quot;#E7B800&quot;, &quot;#FC4E07&quot;))
+# plotmeans
+#library(&quot;gplots&quot;)
+plotmeans(sent ~ group1, frame = FALSE,
+          xlab = &quot;Group&quot;, ylab = &quot;Sentiment&quot;,
+          main=&quot;Mean Plot with 95% CI&quot;) 
+
+# Plots for sentiment over time
+
+plot(time,sent)
+plot(timefox,sentfox)
+plot(timemsn,sentmsn)
+plot(timeovl,sentovl)</code></pre>
 </div>
 <div id="robustness-checks" class="section level4">
 <h4>Robustness checks</h4>
