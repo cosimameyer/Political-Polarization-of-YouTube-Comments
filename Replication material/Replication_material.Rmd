@@ -8,6 +8,11 @@ output: html_document
 
 ### Replication code
 
+```{r setup, include=FALSE}
+# clear workspace
+rm(list = ls())
+```
+
 #### Necessary packages
 ```{r, eval=FALSE}
 
@@ -32,7 +37,8 @@ packages <-
     "tibble",
     "readxl",
     "tuber",
-    "effsize"
+    "effsize",
+    "ggpubr"
   )
 install_load(packages)
 ```
@@ -600,7 +606,7 @@ tidy_comments <- comments %>%
 
 # stemming
 tidy_comments <- tidy_comments %>%
-  dplyr::mutate_at("word", list(wordStem((.), language = "en")))
+  dplyr::mutate_at("word", funs(wordStem((.), language = "en"))) # funs was list before
 
 # remove white space
 tidy_comments$word <- gsub("\\s+", "", tidy_comments$word)
@@ -623,6 +629,8 @@ cleaned_comments <- tidy_comments %>%
 ##### Descriptives Plot
 ```{r, eval=FALSE}
 ## Plot distribution in barplot
+
+descriptives <- read_csv("Data/descriptives.csv")
 
 deslab <- c("Fox", "MSNBC", "Overlap")
 
@@ -648,19 +656,118 @@ ggplot(descriptives, aes(factor(group), percentage, fill = factor(color))) +
   ) +
   scale_x_discrete(labels = deslab) +
   theme_classic() 
+
+# Reverse it
+# descriptives$color <- ifelse(descriptives$channel == "fox", 1, 
+#                              ifelse(descriptives$channel == "msnbc", 2, 3))
+ggplot(descriptives, aes(percentage, factor(color), fill = factor(group))) +
+  geom_bar(
+    stat = 'identity',
+    position = 'dodge',
+    text = paste(
+      'Group:',
+      descriptives$group,
+      '<br>Percent: ',
+      sprintf("%.2f%%", descriptives$percentage)
+    )
+  ) +
+  labs(title = "Descriptive statistics",
+       y = "Percentage",
+       x = "") +
+  scale_fill_manual(
+    values = wes_palette("Chevalier1"),
+    name = "",
+    breaks = c("1", "2", "3"),
+    labels = c("Users", "Comments", "Videos")
+  ) +
+  scale_x_discrete(labels = deslab) +
+  theme_classic() 
+
+
 ```
 
 ##### Sentiment analysis
 ```{r, eval=FALSE}
 sentiment_by_time <- cleaned_comments %>%
   # Define a new column using floor_date()
-  mutate(date = floor_date(as.Date(publishedAt), unit = "day")) %>%
+  mutate(date = floor_date(as.Date(publishedAt), unit = "week")) %>%
   # Group by group, date
   group_by(group, date) %>% 
   mutate(total_words = n()) %>%
   ungroup() %>%
   # Implement sentiment analysis using the Bing lexicon
   inner_join(get_sentiments("bing"))
+```
+
+
+```{r, sentiment analysis fox, warning=FALSE, message=FALSE, echo=FALSE, fig.cap="Contribution to sentiment by user group", fig.height=5}
+## Sentiment analysis
+
+# Define the sentiment dictionary
+bing <- tidytext::get_sentiments("bing")
+
+# A function to plot all three plots
+plot_sentiment <- function(data, a, title){
+  data2 <- data %>%
+    filter(group == a) %>%
+    inner_join(bing) %>%
+    count(word, sentiment, sort = TRUE)
+  data2 %>%
+    filter(n > 400) %>%
+    mutate(n = ifelse(sentiment == "negative",-n, n)) %>%
+    mutate(word = reorder(word, n)) %>%
+    group_by(sentiment) %>%
+    top_n(10) %>%
+    mutate(share = ifelse(n > 0, n / sum(n) * 100,-n / sum(n) * 100)) %>%
+    ggplot(aes(word, share, fill = sentiment)) +
+   # scale_x_continuous(breaks=seq(-15,30,5))+ 
+   # scale_x_continuous(minor_breaks=NULL)  +
+#    scale_x_discrete(limits = c(-12,30), expand=c(0.2,0)) +
+    scale_fill_manual(values = wesanderson::wes_palette("Chevalier1")) +
+    geom_col() +
+    coord_flip() +
+    labs(
+      y = "Share (percentage)",
+      x = "Words",
+      fill = "Sentiment",
+      title = as.character(title)
+    )  +
+    theme (axis.text.y = element_text(size = 5)) +
+    theme_minimal()
+} 
+
+fox <- plot_sentiment(cleaned_comments, 1, "Fox users")
+msnbc <- plot_sentiment(cleaned_comments, 2, "MSNBC users")
+overlap <- plot_sentiment(cleaned_comments, 3, "Overlap")
+
+ggarrange(fox, msnbc, overlap, ncol=2, nrow=2, common.legend = TRUE, legend="bottom")
+library(gridExtra)
+library(grid)
+grid.arrange(fox, msnbc, overlap, ncol=2)
+library("cowplot")
+ggdraw() +
+  draw_plot(fox, x = 0, y = .5, width = .4, height = .5) +
+  draw_plot(msnbc, x = .4, y = .5, width = .4, height = .5) +
+  draw_plot(overlap, x = 0, y = 0, width = 0.4, height = 0.5) # +
+  #draw_plot_label(label = c("A", "B", "C"), size = 15,
+  #                x = c(0, 0.5, 0), y = c(1, 1, 0.5))
+
+g_legend<-function(a.gplot){
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)}
+
+mylegend<-g_legend(fox)
+
+full <- grid.arrange(arrangeGrob(fox + theme(legend.position="none"),
+                         msnbc + theme(legend.position="none"),
+                         overlap + theme(legend.position="none"),
+                         mylegend,
+                         nrow=2, ncol=2))
+
+ggsave(filename = "~/Dropbox/Apps/Overleaf/Political Polarization of YouTube Comments on Migration-Related Issues/figure/sentiment-analysis-overview.pdf", plot = full)
+
 ```
 
 ##### Visualization 
@@ -703,7 +810,9 @@ sentiment_by_time %>%
   paste0(percentage * 100, "%")
   ) + # Multiply by 100 & add %
   theme_minimal()
+```
 
+```{r}
 # Write a function for plotting the following plots
 plot_sentiment <- function(dat, groupno, name, labs1, b) {
   a <- dat %>%
@@ -740,18 +849,20 @@ plot_sentiment <- function(dat, groupno, name, labs1, b) {
       paste0(percentage * 100, "%"
       )
   ) + # Multiply by 100 & add %
+  #  scale_x_continuous(limits=c(as.Date("2017-01-31","2019-05-09")), expand=c(0.2,0)) + 
     scale_fill_manual(values = wes_palette("Chevalier1")) +
+ #   scale_x_date(date_breaks = "6 months" , date_labels = "%b-%y") +#, expand=c(2,0)) +
     theme_classic() +
     geom_vline(xintercept = as.numeric(as.Date("2017-05-03")), linetype =
                  4) +
     annotate(
       "text",
-      x = as.Date("2017-04-03"),
+      x = as.Date("2017-05-07"),
       y = b,
       angle = 90,
       label = "Campaign for primaries",
       vjust = 1.2,
-      size = 2
+      size = 3
       ) +
       geom_vline(xintercept = as.numeric(as.Date("2016-08-11")), linetype =
       4) +
@@ -762,7 +873,7 @@ plot_sentiment <- function(dat, groupno, name, labs1, b) {
       angle = 90,
       label = "Republican nominee",
       vjust = 1.2,
-      size = 2
+      size = 3
       ) +
       geom_vline(xintercept = as.numeric(as.Date("2017-01-19")), linetype =
       4) +
@@ -773,7 +884,7 @@ plot_sentiment <- function(dat, groupno, name, labs1, b) {
       angle = 90,
       label = "President-Elect",
       vjust = 1.2,
-      size = 2
+      size = 3
       ) +
       geom_vline(xintercept = as.numeric(as.Date("2018-03-31")), linetype =
       4) +
@@ -784,7 +895,7 @@ plot_sentiment <- function(dat, groupno, name, labs1, b) {
       angle = 90,
       label = "Early discussions",
       vjust = 1.2,
-      size = 2
+      size = 3
       ) +
       geom_vline(xintercept = as.numeric(as.Date("2018-11-30")), linetype =
       4) +
@@ -795,7 +906,7 @@ plot_sentiment <- function(dat, groupno, name, labs1, b) {
       angle = 90,
       label = "Border crisis I",
       vjust = 1.2,
-      size = 2
+      size = 3
       ) +
       geom_vline(xintercept = as.numeric(as.Date("2019-01-25")), linetype =
       4) +
@@ -804,21 +915,21 @@ plot_sentiment <- function(dat, groupno, name, labs1, b) {
       x = as.Date("2019-01-25"),
       y = b,
       angle = 90,
-      label = "Shutdown",
+      label = "Shutdown and deal over shutdown",
       vjust = 1.2,
-      size = 2
+      size = 3
       ) +
-      geom_vline(xintercept = as.numeric(as.Date("2019-02-14")), linetype =
-      4) +
-    annotate(
-      "text",
-      x = as.Date("2019-02-14"),
-      y = b,
-      angle = 90,
-      label = "Deal over shutdown",
-      vjust = 1.2,
-      size = 2
-      ) +
+    #   geom_vline(xintercept = as.numeric(as.Date("2019-02-14")), linetype =
+    #   4) +
+    # annotate(
+    #   "text",
+    #   x = as.Date("2019-02-14"),
+    #   y = b,
+    #   angle = 90,
+    #   label = "Deal over shutdown",
+    #   vjust = 1.2,
+    #   size = 3
+    #   ) +
       geom_vline(xintercept = as.numeric(as.Date("2019-03-28")), linetype =
       4) +
     annotate(
@@ -828,7 +939,7 @@ plot_sentiment <- function(dat, groupno, name, labs1, b) {
       angle = 90,
       label = "National emergency",
       vjust = 1.2,
-      size = 2
+      size = 3
       ) +
       geom_vline(xintercept = as.numeric(as.Date("2019-04-30")), linetype =
       4) +
@@ -839,23 +950,30 @@ plot_sentiment <- function(dat, groupno, name, labs1, b) {
       angle = 90,
       label = "Border crisis II",
       vjust = 1.2,
-      size = 2
-      ) +
-  scale_fill_manual(values = wes_palette("Chevalier1"))
+      size = 3
+      ) #+
   return(a)
 }
+```
 
+```{r}
 # Plot 2
-plot_sentiment(sentiment_by_time,1,"Fox users", labs1,0.3)
+plot_sentiment(sentiment_by_time,1,"Fox users", labs1,0.75)
+ggsave(filename = "~/Dropbox/Apps/Overleaf/Political Polarization of YouTube Comments on Migration-Related Issues/figure/fox-users.pdf")
+```
 
-
+```{r}
 # Plot 3
 plot_sentiment(sentiment_by_time,2,"MSNBC users", labs1,0.75)
+ggsave(filename = "~/Dropbox/Apps/Overleaf/Political Polarization of YouTube Comments on Migration-Related Issues/figure/msnbc-users.pdf")
+```
 
+```{r}
 # Plot 4
-plot_sentiment(sentiment_by_time,3,"Overlapping users", labs1,0.25)
+plot_sentiment(sentiment_by_time,3,"Overlapping users", labs1,0.75)
+```
 
-
+```{r}
 # Plot 5
 labs1 <- c("fox" = "Fox", "msnbc" = "MSNBC")
 
@@ -901,101 +1019,104 @@ sentiment_by_time %>%
   4) +
   annotate(
   "text",
-  x = as.Date("2017-04-03"),
-  y = 0.21,
+  x = as.Date("2017-05-07"),
+  y = 0.75,
   angle = 90,
   label = "Campaign for primaries",
   vjust = 1.2,
-  size = 2
+  size = 2.6
   ) +
   geom_vline(xintercept = as.numeric(as.Date("2016-08-11")), linetype =
                4) +
   annotate(
     "text",
     x = as.Date("2016-08-11"),
-    y = 0.21,
+    y = 0.75,
     angle = 90,
     label = "Republican nominee",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
   geom_vline(xintercept = as.numeric(as.Date("2017-01-19")), linetype =
                4) +
   annotate(
     "text",
     x = as.Date("2017-01-19"),
-    y = 0.21,
+    y = 0.75,
     angle = 90,
     label = "President-Elect",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
   geom_vline(xintercept = as.numeric(as.Date("2018-03-31")), linetype =
                4) +
   annotate(
     "text",
     x = as.Date("2018-03-31"),
-    y = 0.21,
+    y = 0.75,
     angle = 90,
     label = "Early discussions",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
   geom_vline(xintercept = as.numeric(as.Date("2018-11-30")), linetype =
                4) +
   annotate(
     "text",
     x = as.Date("2018-11-30"),
-    y = 0.21,
+    y = 0.75,
     angle = 90,
     label = "Border crisis I",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
   geom_vline(xintercept = as.numeric(as.Date("2019-01-25")), linetype =
                4) +
   annotate(
     "text",
     x = as.Date("2019-01-25"),
-    y = 0.21,
+    y = 0.75,
     angle = 90,
-    label = "Shutdown",
+    label = "Shutdown and deal over shutdown",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
-  geom_vline(xintercept = as.numeric(as.Date("2019-02-14")), linetype =
-               4) +
-  annotate(
-    "text",
-    x = as.Date("2019-02-14"),
-    y = 0.21,
-    angle = 90,
-    label = "Deal over shutdown",
-    vjust = 1.2,
-    size = 2
-  ) +
+  # geom_vline(xintercept = as.numeric(as.Date("2019-02-14")), linetype =
+  #              4) +
+  # annotate(
+  #   "text",
+  #   x = as.Date("2019-02-14"),
+  #   y = 0.75,
+  #   angle = 90,
+  #   label = "Deal over shutdown",
+  #   vjust = 1.2,
+  #   size = 2
+  # ) +
   geom_vline(xintercept = as.numeric(as.Date("2019-03-28")), linetype =
                4) +
   annotate(
     "text",
     x = as.Date("2019-03-28"),
-    y = 0.21,
+    y = 0.75,
     angle = 90,
-    label = "National emergency",
+    label = "National emergency & Boarder crisis II",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
-  geom_vline(xintercept = as.numeric(as.Date("2019-04-30")), linetype =
-               4) +
-  annotate(
-    "text",
-    x = as.Date("2019-04-30"),
-    y = 0.21,
-    angle = 90,
-    label = "Border crisis II",
-    vjust = 1.2,
-    size = 2
-  )
+  # geom_vline(xintercept = as.numeric(as.Date("2019-04-30")), linetype =
+  #              4) +
+  # annotate(
+  #   "text",
+  #   x = as.Date("2019-04-30"),
+  #   y = 0.75,
+  #   angle = 90,
+  #   label = "Border crisis II",
+  #   vjust = 1.2,
+  #   size = 2.6
+  # )
+
+ggsave(filename = "~/Dropbox/Apps/Overleaf/Political Polarization of YouTube Comments on Migration-Related Issues/figure/disaggregated.pdf", scale = 0.8, dpi = 600)
+
 ```
 
 #### Significance testing
@@ -1151,13 +1272,13 @@ plot(timemsn,sentmsn)
 plot(timeovl,sentovl)
 ```
 
-#### Robustness checks
+### Robustness checks
 
-### Robustness tests with NRC dictionary
+#### Robustness tests with NRC dictionary
 ```{r, echo=TRUE, warning=FALSE, message=FALSE, fig.align="center", eval=FALSE}
 sentiment_by_time <- cleaned_comments %>%
   # Define a new column using floor_date()
-  mutate(date = floor_date(as.Date(publishedAt), unit = "day")) %>%
+  mutate(date = floor_date(as.Date(publishedAt), unit = "week")) %>%
   # Group by date
   group_by(group, date) %>%
   mutate(total_words = n()) %>%
@@ -1249,7 +1370,7 @@ plot_sentiment <- function(dat,groupno,name,labs1,b){
     angle = 90,
     label = "Campaign for primaries",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
   geom_vline(xintercept = as.numeric(as.Date("2016-08-11")), linetype =
                4) +
@@ -1260,7 +1381,7 @@ plot_sentiment <- function(dat,groupno,name,labs1,b){
     angle = 90,
     label = "Republican nominee",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
   geom_vline(xintercept = as.numeric(as.Date("2017-01-19")), linetype =
                4) +
@@ -1271,7 +1392,7 @@ plot_sentiment <- function(dat,groupno,name,labs1,b){
     angle = 90,
     label = "President-Elect",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
   geom_vline(xintercept = as.numeric(as.Date("2018-03-31")), linetype =
                4) +
@@ -1282,7 +1403,7 @@ plot_sentiment <- function(dat,groupno,name,labs1,b){
     angle = 90,
     label = "Early discussions",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
   geom_vline(xintercept = as.numeric(as.Date("2018-11-30")), linetype =
                4) +
@@ -1293,7 +1414,7 @@ plot_sentiment <- function(dat,groupno,name,labs1,b){
     angle = 90,
     label = "Border crisis I",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
   geom_vline(xintercept = as.numeric(as.Date("2019-01-25")), linetype =
                4) +
@@ -1302,21 +1423,21 @@ plot_sentiment <- function(dat,groupno,name,labs1,b){
     x = as.Date("2019-01-25"),
     y = b,
     angle = 90,
-    label = "Shutdown",
+    label = "Shutdown & Deal over shutdown",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
-  geom_vline(xintercept = as.numeric(as.Date("2019-02-14")), linetype =
-               4) +
-  annotate(
-    "text",
-    x = as.Date("2019-02-14"),
-    y = b,
-    angle = 90,
-    label = "Deal over shutdown",
-    vjust = 1.2,
-    size = 2
-  ) +
+  # geom_vline(xintercept = as.numeric(as.Date("2019-02-14")), linetype =
+  #              4) +
+  # annotate(
+  #   "text",
+  #   x = as.Date("2019-02-14"),
+  #   y = b,
+  #   angle = 90,
+  #   label = "Deal over shutdown",
+  #   vjust = 1.2,
+  #   size = 2.6
+  # ) +
   geom_vline(xintercept = as.numeric(as.Date("2019-03-28")), linetype =
                4) +
   annotate(
@@ -1326,7 +1447,7 @@ plot_sentiment <- function(dat,groupno,name,labs1,b){
     angle = 90,
     label = "National emergency",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
   geom_vline(xintercept = as.numeric(as.Date("2019-04-30")), linetype =
                4) +
@@ -1337,23 +1458,32 @@ plot_sentiment <- function(dat,groupno,name,labs1,b){
     angle = 90,
     label = "Border crisis II",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
   scale_fill_manual(values = wes_palette("Chevalier1"))
   return(a)
 }
+```
 
+```{r}
 # Plot 2
-plot_sentiment(sentiment_by_time,1,"Fox users", labs1,0.3)
+plot_sentiment(sentiment_by_time,1,"Fox users", labs1,0.75)
+ggsave(filename = "~/Dropbox/Apps/Overleaf/Political Polarization of YouTube Comments on Migration-Related Issues/figure/fox-users-robust.pdf")
+```
 
-
+```{r}
 # Plot 3
 plot_sentiment(sentiment_by_time,2,"MSNBC users", labs1,0.75)
+ggsave(filename = "~/Dropbox/Apps/Overleaf/Political Polarization of YouTube Comments on Migration-Related Issues/figure/msnbc-users-robust.pdf")
 
+```
+
+```{r}
 # Plot 4
-plot_sentiment(sentiment_by_time,3,"Overlapping users", labs1,0.25)
+plot_sentiment(sentiment_by_time,3,"Overlapping users", labs1,0.75)
+```
 
-
+```{r}
 # Plot 5
 labs1 <- c("fox" = "Fox", "msnbc" = "MSNBC")
 
@@ -1400,98 +1530,100 @@ sentiment_by_time %>%
   annotate(
     "text",
     x = as.Date("2017-04-03"),
-    y = 0.21,
+    y = 0.75,
     angle = 90,
     label = "Campaign for primaries",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
   geom_vline(xintercept = as.numeric(as.Date("2016-08-11")), linetype =
                4) +
   annotate(
     "text",
     x = as.Date("2016-08-11"),
-    y = 0.21,
+    y = 0.75,
     angle = 90,
     label = "Republican nominee",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
   geom_vline(xintercept = as.numeric(as.Date("2017-01-19")), linetype =
                4) +
   annotate(
     "text",
     x = as.Date("2017-01-19"),
-    y = 0.21,
+    y = 0.75,
     angle = 90,
     label = "President-Elect",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
   geom_vline(xintercept = as.numeric(as.Date("2018-03-31")), linetype =
                4) +
   annotate(
     "text",
     x = as.Date("2018-03-31"),
-    y = 0.21,
+    y = 0.75,
     angle = 90,
     label = "Early discussions",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
   geom_vline(xintercept = as.numeric(as.Date("2018-11-30")), linetype =
                4) +
   annotate(
     "text",
     x = as.Date("2018-11-30"),
-    y = 0.21,
+    y = 0.75,
     angle = 90,
     label = "Border crisis I",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
   geom_vline(xintercept = as.numeric(as.Date("2019-01-25")), linetype =
                4) +
   annotate(
     "text",
     x = as.Date("2019-01-25"),
-    y = 0.21,
+    y = 0.75,
     angle = 90,
-    label = "Shutdown",
+    label = "Shutdown & Deal over shutdown",
     vjust = 1.2,
-    size = 2
+    size = 2.6
   ) +
-  geom_vline(xintercept = as.numeric(as.Date("2019-02-14")), linetype =
-               4) +
-  annotate(
-    "text",
-    x = as.Date("2019-02-14"),
-    y = 0.21,
-    angle = 90,
-    label = "Deal over shutdown",
-    vjust = 1.2,
-    size = 2
-  ) +
+  # geom_vline(xintercept = as.numeric(as.Date("2019-02-14")), linetype =
+  #              4) +
+  # annotate(
+  #   "text",
+  #   x = as.Date("2019-02-14"),
+  #   y = 0.21,
+  #   angle = 90,
+  #   label = "Deal over shutdown",
+  #   vjust = 1.2,
+  #   size = 2.6
+  # ) +
   geom_vline(xintercept = as.numeric(as.Date("2019-03-28")), linetype =
                4) +
   annotate(
     "text",
     x = as.Date("2019-03-28"),
-    y = 0.21,
+    y = 0.75,
     angle = 90,
-    label = "National emergency",
+    label = "National emergency & Border crisis II",
     vjust = 1.2,
-    size = 2
-  ) +
-  geom_vline(xintercept = as.numeric(as.Date("2019-04-30")), linetype =
-               4) +
-  annotate(
-    "text",
-    x = as.Date("2019-04-30"),
-    y = 0.21,
-    angle = 90,
-    label = "Border crisis II",
-    vjust = 1.2,
-    size = 2
-  )
+    size = 2.6
+  ) # +
+  # geom_vline(xintercept = as.numeric(as.Date("2019-04-30")), linetype =
+  #              4) +
+  # annotate(
+  #   "text",
+  #   x = as.Date("2019-04-30"),
+  #   y = 0.21,
+  #   angle = 90,
+  #   label = "Border crisis II",
+  #   vjust = 1.2,
+  #   size = 2.6
+  # )
+ggsave(filename = "~/Dropbox/Apps/Overleaf/Political Polarization of YouTube Comments on Migration-Related Issues/figure/disaggregated-robust.pdf")
+
 ```
